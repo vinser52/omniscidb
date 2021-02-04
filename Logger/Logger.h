@@ -37,7 +37,7 @@
 #ifndef SHARED_LOGGER_H
 #define SHARED_LOGGER_H
 
-#if !(defined(__CUDACC__) || defined(NO_BOOST))
+#if !(defined(__CUDA_ARCH__) || defined(NO_BOOST))
 
 #include <boost/config.hpp>
 #include <boost/filesystem.hpp>
@@ -105,7 +105,7 @@ static_assert(Severity::_NSEVERITIES == SeverityNames.size(),
 static_assert(Severity::_NSEVERITIES == SeveritySymbols.size(),
               "Size of SeveritySymbols must equal number of Severity levels.");
 
-#if !(defined(__CUDACC__) || defined(NO_BOOST))
+#if !(defined(__CUDA_ARCH__) || defined(NO_BOOST))
 
 using Channels = std::set<Channel>;
 
@@ -252,7 +252,7 @@ OMINSCI_CHECKOP_FUNCTION(GE, >=)
 
 #define UNREACHABLE() LOG(FATAL) << "UNREACHABLE "
 
-#else  // __CUDACC__
+#else  // __CUDA_ARCH__
 
 // Provided for backward compatibility to allow code to compile.
 // No logging is actually done, since cuda code should not log.
@@ -294,7 +294,7 @@ class NullLogger {
 
 #define UNREACHABLE() LOG(FATAL)
 
-#endif  // __CUDACC__
+#endif  // __CUDA_ARCH__
 
 #define LOG_IF(severity, condition) \
   if (condition)                    \

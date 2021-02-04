@@ -216,7 +216,7 @@ union Datum {
   float floatval;
   double doubleval;
   VarlenDatum* arrayval;
-#ifndef __CUDACC__
+#ifndef __CUDA_ARCH__
   std::string* stringval;  // string value
 #endif
 };
@@ -428,7 +428,7 @@ class SQLTypeInfo {
   inline void set_fixed_size() { size = get_storage_size(); }
   inline void set_compression(EncodingType c) { compression = c; }
   inline void set_comp_param(int p) { comp_param = p; }
-#ifndef __CUDACC__
+#ifndef __CUDA_ARCH__
   inline std::string get_type_name() const {
     if (IS_GEO(type)) {
       std::string srid_string = "";
@@ -771,7 +771,7 @@ class SQLTypeInfo {
   EncodingType compression;  // compression scheme
   int comp_param;            // compression parameter when applicable for certain schemes
   int size;                  // size of the type in bytes.  -1 for variable size
-#ifndef __CUDACC__
+#ifndef __CUDA_ARCH__
   static std::string type_name[kSQLTYPE_LAST];
   static std::string comp_name[kENCODING_LAST];
 #endif
@@ -913,7 +913,7 @@ class SQLTypeInfo {
 
 SQLTypes decimal_to_int_type(const SQLTypeInfo&);
 
-#ifndef __CUDACC__
+#ifndef __CUDA_ARCH__
 #include <string_view>
 
 Datum StringToDatum(std::string_view s, SQLTypeInfo& ti);

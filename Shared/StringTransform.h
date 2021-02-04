@@ -127,7 +127,7 @@ std::string get_quoted_string(const std::string& filename,
                               char escape = '\\');
 #endif  // __CUDACC__
 
-#ifndef __CUDACC__
+#ifndef __CUDA_ARCH__
 namespace {
 
 template <typename T>

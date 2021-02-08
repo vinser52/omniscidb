@@ -48,7 +48,7 @@ if(ENABLE_CUDA)
         -D_FORCE_INLINES
         ${MAPD_DEFINITIONS}
         ${CUDA_COMPILATION_ARCH}
-        -std=c++14
+        -std=c++17
         -shared
         ${CMAKE_CURRENT_SOURCE_DIR}/ProfileUtils.cu
         -o ${CMAKE_CURRENT_BINARY_DIR}/libProfileUtils.so

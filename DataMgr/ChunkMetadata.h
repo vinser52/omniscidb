@@ -17,6 +17,8 @@
 #pragma once
 
 #include <cstddef>
+#include <map>
+#include <vector>
 #include "../Shared/sqltypes.h"
 #include "Shared/types.h"
 

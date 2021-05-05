@@ -165,6 +165,8 @@ class DataMgr {
       const std::string& dataDir,
       const SystemParameters& system_parameters,
       std::unique_ptr<CudaMgr_Namespace::CudaMgr> cudaMgr,
+      const bool pmm,
+      const std::string& pmm_path,
       const bool useGpus,
       const size_t reservedGpuMem = (1 << 27),
       const size_t numReaderThreads = 0, /* 0 means use default for # of reader threads */
@@ -209,6 +211,7 @@ class DataMgr {
   File_Namespace::GlobalFileMgr* getGlobalFileMgr() const;
   std::shared_ptr<ForeignStorageInterface> getForeignStorageInterface() const;
 
+  inline bool pmmPresent(void) { return hasPmm_; }
   // database_id, table_id, column_id, fragment_id
   std::vector<int> levelSizes_;
 
@@ -241,6 +244,8 @@ class DataMgr {
   std::vector<std::vector<AbstractBufferMgr*>> bufferMgrs_;
   std::unique_ptr<CudaMgr_Namespace::CudaMgr> cudaMgr_;
   std::string dataDir_;
+  bool hasPmm_;
+  std::string pmm_path_;
   bool hasGpus_;
   size_t reservedGpuMem_;
   std::mutex buffer_access_mutex_;

@@ -161,6 +161,8 @@ class DBHandler : public OmniSciIf {
   DBHandler(const std::vector<LeafHostInfo>& db_leaves,
             const std::vector<LeafHostInfo>& string_leaves,
             const std::string& base_data_path,
+            const bool pmm,
+            const std::string& pmm_path,
             const bool allow_multifrag,
             const bool jit_debug,
             const bool intel_jit_profile,
@@ -582,6 +584,8 @@ class DBHandler : public OmniSciIf {
   std::vector<LeafHostInfo> db_leaves_;
   std::vector<LeafHostInfo> string_leaves_;
   const std::string base_data_path_;
+  const bool pmm_;
+  const std::string pmm_path_;
   boost::filesystem::path import_path_;
   ExecutorDeviceType executor_device_type_;
   std::default_random_engine random_gen_;

@@ -332,6 +332,10 @@ else()
   endif()
 endif()
 
+set(MEMKIND_REQUIRED_VERSION 1.11.0)
+find_package(PkgConfig QUIET)
+pkg_check_modules(memkind REQUIRED memkind>=${MEMKIND_REQUIRED_VERSION})
+
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 
 if(MSVC)
@@ -704,6 +708,7 @@ add_subdirectory(SQLFrontend)
 add_subdirectory(TableArchiver)
 add_subdirectory(ThriftHandler)
 add_subdirectory(Geospatial)
+add_subdirectory(HeteroMem)
 add_subdirectory(Distributed)
 add_subdirectory(UdfCompiler)
 
@@ -716,7 +721,7 @@ if(ENABLE_ODBC)
   add_subdirectory(ODBC)
 endif()
 
-set(MAPD_LIBRARIES OSDependent Shared Catalog SqliteConnector MigrationMgr TableArchiver Parser Analyzer ImportExport QueryRunner QueryEngine QueryState LockMgr DataMgr Fragmenter Logger Geospatial)
+set(MAPD_LIBRARIES OSDependent Shared Catalog SqliteConnector MigrationMgr TableArchiver Parser Analyzer ImportExport QueryRunner QueryEngine QueryState LockMgr DataMgr Fragmenter Logger Geospatial HeteroMem)
 
 if("${MAPD_EDITION_LOWER}" STREQUAL "ee")
   list(APPEND MAPD_LIBRARIES Distributed)
@@ -830,11 +835,11 @@ add_custom_target(rerun_cmake ALL
   )
 add_dependencies(omnisci_server rerun_cmake)
 
-target_link_libraries(omnisci_server mapd_thrift thrift_handler ${MAPD_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_DL_LIBS} ${CUDA_LIBRARIES} ${PROFILER_LIBS} ${ZLIB_LIBRARIES} ${LOCALE_LINK_FLAG})
+target_link_libraries(omnisci_server mapd_thrift thrift_handler ${MAPD_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_DL_LIBS} ${CUDA_LIBRARIES} ${PROFILER_LIBS} ${ZLIB_LIBRARIES} ${LOCALE_LINK_FLAG} ${memkind_LIBRARIES})
 
 target_link_libraries(initdb mapd_thrift thrift_handler ${MAPD_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_DL_LIBS}
     ${CUDA_LIBRARIES} ${PROFILER_LIBS} ${ZLIB_LIBRARIES} ${BLOSC_LIBRARIES}
-    ${LOCALE_LINK_FLAG})
+    ${LOCALE_LINK_FLAG} ${memkind_LIBRARIES})
 
 macro(set_dpkg_arch arch_in arch_out)
   if("${arch_in}" STREQUAL "x86_64")

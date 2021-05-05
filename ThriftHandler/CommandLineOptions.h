@@ -51,6 +51,8 @@ class CommandLineOptions {
   std::string cluster_topology_file = {"cluster_topology.conf"};
   std::string license_path = {""};
   std::string encryption_key_store_path = {};
+  std::string pmm_path = {""};  // DCPMM for cold columns
+  bool pmm = false;
   bool verbose_logging = false;
   bool jit_debug = false;
   bool intel_jit_profile = false;

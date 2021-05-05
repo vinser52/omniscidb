@@ -205,6 +205,7 @@ QueryRunner::QueryRunner(const char* db_path,
   data_mgr_.reset(new Data_Namespace::DataMgr(data_dir.string(),
                                               mapd_params,
                                               std::move(cuda_mgr),
+                                              false, "", // TODO: is it OK if we do not use actual PMem path???
                                               uses_gpus,
                                               reserved_gpu_mem,
                                               0,

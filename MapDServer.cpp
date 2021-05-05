@@ -417,6 +417,8 @@ int startMapdServer(CommandLineOptions& prog_config_opts, bool start_http_server
           std::make_shared<DBHandler>(prog_config_opts.db_leaves,
                                       prog_config_opts.string_leaves,
                                       prog_config_opts.base_path,
+                                      prog_config_opts.pmm,
+                                      prog_config_opts.pmm_path,
                                       prog_config_opts.allow_multifrag,
                                       prog_config_opts.jit_debug,
                                       prog_config_opts.intel_jit_profile,

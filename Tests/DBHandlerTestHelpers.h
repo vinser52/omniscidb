@@ -251,6 +251,8 @@ class DBHandlerTestFixture : public testing::Test {
       db_handler_ = std::make_unique<DBHandler>(db_leaves_,
                                                 string_leaves_,
                                                 BASE_PATH,
+                                                false,
+                                                "",
                                                 allow_multifrag,
                                                 jit_debug,
                                                 intel_jit_profile,

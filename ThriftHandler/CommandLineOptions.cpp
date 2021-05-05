@@ -103,6 +103,9 @@ void CommandLineOptions::fillOptions() {
                           po::value<size_t>(&system_parameters.cpu_buffer_mem_bytes)
                               ->default_value(system_parameters.cpu_buffer_mem_bytes),
                           "Size of memory reserved for CPU buffers, in bytes.");
+  help_desc.add_options()("pmm",
+                          po::value<std::string>(&pmm_path),
+                          "Path to directory containing Intel(R) DCPMM mount points for cold columns");
 
   help_desc.add_options()("cpu-only",
                           po::value<bool>(&system_parameters.cpu_only)
@@ -1069,6 +1072,15 @@ boost::optional<int> CommandLineOptions::parse_command_line(
     return 1;
   }
 
+  boost::algorithm::trim_if(pmm_path, boost::is_any_of("\"'"));
+  if (pmm_path.length() > 0) {
+    if (!boost::filesystem::exists(pmm_path)) {
+      LOG(FATAL) << "File " <<  pmm_path << " does not exist" << std::endl;
+      return 1;
+    }
+
+    pmm = true;
+  }
   if (!g_from_table_reordering) {
     LOG(INFO) << " From clause table reordering is disabled";
   }

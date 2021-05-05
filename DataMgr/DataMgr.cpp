@@ -20,7 +20,7 @@
  */
 
 #include "DataMgr/DataMgr.h"
-#include "BufferMgr/CpuBufferMgr/CpuBufferMgr.h"
+#include "BufferMgr/CpuBufferMgr/CpuHeteroBufferMgr.h"
 #include "BufferMgr/GpuCudaBufferMgr/GpuCudaBufferMgr.h"
 #include "CudaMgr/CudaMgr.h"
 #include "FileMgr/GlobalFileMgr.h"
@@ -43,12 +43,16 @@ namespace Data_Namespace {
 DataMgr::DataMgr(const std::string& dataDir,
                  const SystemParameters& system_parameters,
                  std::unique_ptr<CudaMgr_Namespace::CudaMgr> cudaMgr,
+                 const bool pmm,
+                 const std::string& pmm_path,
                  const bool useGpus,
                  const size_t reservedGpuMem,
                  const size_t numReaderThreads,
                  const File_Namespace::DiskCacheConfig cache_config)
     : cudaMgr_{std::move(cudaMgr)}
     , dataDir_{dataDir}
+    , hasPmm_{pmm}
+    , pmm_path_{pmm_path}
     , hasGpus_{false}
     , reservedGpuMem_{reservedGpuMem} {
   if (useGpus) {
@@ -202,18 +206,20 @@ void DataMgr::populateMgrs(const SystemParameters& system_parameters,
   LOG(INFO) << "Max CPU Slab Size is " << (float)maxCpuSlabSize / (1024 * 1024) << "MB";
   LOG(INFO) << "Max memory pool size for CPU is " << (float)cpuBufferSize / (1024 * 1024)
             << "MB";
+  // TODO: Should we use minCpuSlabSize and maxCpuSlabSize in CpuHeteroBufferMgr???
+  AbstractBufferMgr *cpuMgr = nullptr;
+  if (hasPmm_) {
+    cpuMgr = new Buffer_Namespace::CpuHeteroBufferMgr(0, cpuBufferSize, pmm_path_, cudaMgr_.get(), page_size, bufferMgrs_[0][0]);
+  } else {
+    cpuMgr = new Buffer_Namespace::CpuHeteroBufferMgr(0, cpuBufferSize, cudaMgr_.get(), page_size, bufferMgrs_[0][0]);
+  }
+  bufferMgrs_[1].push_back(cpuMgr);
+  levelSizes_.push_back(1);
+  
   if (hasGpus_ || cudaMgr_) {
     LOG(INFO) << "Reserved GPU memory is " << (float)reservedGpuMem_ / (1024 * 1024)
               << "MB includes render buffer allocation";
     bufferMgrs_.resize(3);
-    bufferMgrs_[1].push_back(new Buffer_Namespace::CpuBufferMgr(0,
-                                                                cpuBufferSize,
-                                                                cudaMgr_.get(),
-                                                                minCpuSlabSize,
-                                                                maxCpuSlabSize,
-                                                                page_size,
-                                                                bufferMgrs_[0][0]));
-    levelSizes_.push_back(1);
     int numGpus = cudaMgr_->getDeviceCount();
     for (int gpuNum = 0; gpuNum < numGpus; ++gpuNum) {
       size_t gpuMaxMemSize =
@@ -241,15 +247,6 @@ void DataMgr::populateMgrs(const SystemParameters& system_parameters,
                                                                       bufferMgrs_[1][0]));
     }
     levelSizes_.push_back(numGpus);
-  } else {
-    bufferMgrs_[1].push_back(new Buffer_Namespace::CpuBufferMgr(0,
-                                                                cpuBufferSize,
-                                                                cudaMgr_.get(),
-                                                                minCpuSlabSize,
-                                                                maxCpuSlabSize,
-                                                                page_size,
-                                                                bufferMgrs_[0][0]));
-    levelSizes_.push_back(1);
   }
 }
 
@@ -305,8 +302,8 @@ std::vector<MemoryInfo> DataMgr::getMemoryInfo(const MemoryLevel memLevel) {
 
   std::vector<MemoryInfo> mem_info;
   if (memLevel == MemoryLevel::CPU_LEVEL) {
-    Buffer_Namespace::CpuBufferMgr* cpu_buffer =
-        dynamic_cast<Buffer_Namespace::CpuBufferMgr*>(
+    Buffer_Namespace::CpuHeteroBufferMgr* cpu_buffer =
+        dynamic_cast<Buffer_Namespace::CpuHeteroBufferMgr*>(
             bufferMgrs_[MemoryLevel::CPU_LEVEL][0]);
     CHECK(cpu_buffer);
     MemoryInfo mi;
@@ -316,6 +313,8 @@ std::vector<MemoryInfo> DataMgr::getMemoryInfo(const MemoryLevel memLevel) {
     mi.isAllocationCapped = cpu_buffer->isAllocationCapped();
     mi.numPageAllocated = cpu_buffer->getAllocated() / mi.pageSize;
 
+    // TODO: ? buffers do not use slabs anymore
+#if 0
     const auto& slab_segments = cpu_buffer->getSlabSegments();
     for (size_t slab_num = 0; slab_num < slab_segments.size(); ++slab_num) {
       for (auto segment : slab_segments[slab_num]) {
@@ -330,6 +329,7 @@ std::vector<MemoryInfo> DataMgr::getMemoryInfo(const MemoryLevel memLevel) {
         mi.nodeMemoryData.push_back(md);
       }
     }
+#endif
     mem_info.push_back(mi);
   } else if (hasGpus_) {
     int numGpus = cudaMgr_->getDeviceCount();

@@ -33,10 +33,12 @@ set(datamgr_source_files
     ForeignStorage/CsvFileBufferParser.cpp
     BufferMgr/GpuCudaBufferMgr/GpuCudaBufferMgr.cpp
     BufferMgr/GpuCudaBufferMgr/GpuCudaBuffer.cpp
-    BufferMgr/CpuBufferMgr/CpuBufferMgr.cpp
-    BufferMgr/CpuBufferMgr/CpuBuffer.cpp
+    #BufferMgr/CpuBufferMgr/CpuBufferMgr.cpp
+    #BufferMgr/CpuBufferMgr/CpuBuffer.cpp
+    BufferMgr/CpuBufferMgr/CpuHeteroBufferMgr.cpp
     BufferMgr/BufferMgr.cpp
     BufferMgr/Buffer.cpp
+    BufferMgr/HeteroBufferMgr.cpp
     PersistentStorageMgr/MutableCachePersistentStorageMgr.cpp
     PersistentStorageMgr/PersistentStorageMgr.cpp
     ForeignStorage/ForeignTableRefresh.cpp

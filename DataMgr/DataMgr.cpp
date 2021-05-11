@@ -21,7 +21,7 @@
 
 #include "DataMgr/DataMgr.h"
 #include "BufferMgr/CpuBufferMgr/CpuHeteroBufferMgr.h"
-#include "BufferMgr/GpuCudaBufferMgr/GpuCudaBufferMgr.h"
+#include "BufferMgr/GpuCudaBufferMgr/GpuHeteroBufferMgr.h"
 #include "CudaMgr/CudaMgr.h"
 #include "FileMgr/GlobalFileMgr.h"
 #include "PersistentStorageMgr/PersistentStorageMgr.h"
@@ -238,13 +238,12 @@ void DataMgr::populateMgrs(const SystemParameters& system_parameters,
                 << (float)maxGpuSlabSize / (1024 * 1024) << "MB";
       LOG(INFO) << "Max memory pool size for GPU " << gpuNum << " is "
                 << (float)gpuMaxMemSize / (1024 * 1024) << "MB";
-      bufferMgrs_[2].push_back(new Buffer_Namespace::GpuCudaBufferMgr(gpuNum,
-                                                                      gpuMaxMemSize,
-                                                                      cudaMgr_.get(),
-                                                                      minGpuSlabSize,
-                                                                      maxGpuSlabSize,
-                                                                      page_size,
-                                                                      bufferMgrs_[1][0]));
+      // TODO: Should we use minCpuSlabSize and maxCpuSlabSize in GpuHeteroBufferMgr???
+      bufferMgrs_[2].push_back(new Buffer_Namespace::GpuHeteroBufferMgr(gpuNum,
+                                                                        gpuMaxMemSize,
+                                                                        cudaMgr_.get(),
+                                                                        page_size,
+                                                                        bufferMgrs_[1][0]));
     }
     levelSizes_.push_back(numGpus);
   }
@@ -334,8 +333,8 @@ std::vector<MemoryInfo> DataMgr::getMemoryInfo(const MemoryLevel memLevel) {
   } else if (hasGpus_) {
     int numGpus = cudaMgr_->getDeviceCount();
     for (int gpuNum = 0; gpuNum < numGpus; ++gpuNum) {
-      Buffer_Namespace::GpuCudaBufferMgr* gpu_buffer =
-          dynamic_cast<Buffer_Namespace::GpuCudaBufferMgr*>(
+      Buffer_Namespace::GpuHeteroBufferMgr* gpu_buffer =
+          dynamic_cast<Buffer_Namespace::GpuHeteroBufferMgr*>(
               bufferMgrs_[MemoryLevel::GPU_LEVEL][gpuNum]);
       CHECK(gpu_buffer);
       MemoryInfo mi;
@@ -345,6 +344,8 @@ std::vector<MemoryInfo> DataMgr::getMemoryInfo(const MemoryLevel memLevel) {
       mi.isAllocationCapped = gpu_buffer->isAllocationCapped();
       mi.numPageAllocated = gpu_buffer->getAllocated() / mi.pageSize;
 
+      // TODO: ? buffers do not use slabs anymore
+#if 0
       const auto& slab_segments = gpu_buffer->getSlabSegments();
       for (size_t slab_num = 0; slab_num < slab_segments.size(); ++slab_num) {
         for (auto segment : slab_segments[slab_num]) {
@@ -359,6 +360,7 @@ std::vector<MemoryInfo> DataMgr::getMemoryInfo(const MemoryLevel memLevel) {
           mi.nodeMemoryData.push_back(md);
         }
       }
+#endif
       mem_info.push_back(mi);
     }
   }

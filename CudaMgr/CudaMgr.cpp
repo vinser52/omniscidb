@@ -110,8 +110,11 @@ void CudaMgr::copyHostToDevice(int8_t* device_ptr,
                                const size_t num_bytes,
                                const int device_num) {
   setContext(device_num);
+  cudaMemcpy((void*)device_ptr, host_ptr, num_bytes, cudaMemcpyHostToDevice);
+#if 0
   checkError(
       cuMemcpyHtoD(reinterpret_cast<CUdeviceptr>(device_ptr), host_ptr, num_bytes));
+#endif
 }
 
 void CudaMgr::copyDeviceToHost(int8_t* host_ptr,
@@ -119,8 +122,11 @@ void CudaMgr::copyDeviceToHost(int8_t* host_ptr,
                                const size_t num_bytes,
                                const int device_num) {
   setContext(device_num);
+  cudaMemcpy(host_ptr, (void*)device_ptr, num_bytes, cudaMemcpyDeviceToHost);
+#if 0
   checkError(
       cuMemcpyDtoH(host_ptr, reinterpret_cast<const CUdeviceptr>(device_ptr), num_bytes));
+#endif
 }
 
 void CudaMgr::copyDeviceToDevice(int8_t* dest_ptr,

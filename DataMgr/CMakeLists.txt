@@ -2,6 +2,21 @@ if(NOT MSVC)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-result")
 endif()
 
+if(ENABLE_CUDA)
+  message(DEBUG "DataMgr CUDA_COMPILATION_ARCH: ${CUDA_COMPILATION_ARCH}")
+  set(MAPD_DEFINITIONS "-DHAVE_CUDA")
+  set(NVCC_BUILD_TYPE_ARGS)
+  string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UPPERCASE)
+  if(CMAKE_BUILD_TYPE_UPPERCASE MATCHES DEBUG)
+    list(APPEND NVCC_BUILD_TYPE_ARGS -DTHRUST_DEBUG --debug)
+    if (ENABLE_CUDA_KERNEL_DEBUG)
+        list(APPEND NVCC_BUILD_TYPE_ARGS --device-debug)
+    endif()
+  else()
+    list(APPEND NVCC_BUILD_TYPE_ARGS -O3)
+  endif()
+endif()
+
 set(datamgr_source_files
     AbstractBuffer.cpp
     Allocators/CudaAllocator.cpp
@@ -31,8 +46,9 @@ set(datamgr_source_files
     ForeignStorage/FileRegions.cpp
     ForeignStorage/TextFileBufferParser.cpp
     ForeignStorage/CsvFileBufferParser.cpp
-    BufferMgr/GpuCudaBufferMgr/GpuCudaBufferMgr.cpp
-    BufferMgr/GpuCudaBufferMgr/GpuCudaBuffer.cpp
+    #BufferMgr/GpuCudaBufferMgr/GpuCudaBufferMgr.cpp
+    #BufferMgr/GpuCudaBufferMgr/GpuCudaBuffer.cpp
+    BufferMgr/GpuCudaBufferMgr/GpuHeteroBufferMgr.cpp
     #BufferMgr/CpuBufferMgr/CpuBufferMgr.cpp
     #BufferMgr/CpuBufferMgr/CpuBuffer.cpp
     BufferMgr/CpuBufferMgr/CpuHeteroBufferMgr.cpp
@@ -80,7 +96,28 @@ if(ENABLE_AWS_S3)
   set_arrow_has_private_aws_sdk()
 endif()
 
-add_library(DataMgr ${datamgr_source_files})
+if(ENABLE_CUDA)
+  add_library(DataMgr ${datamgr_source_files} ${CMAKE_CURRENT_BINARY_DIR}/GpuCudaHeteroBuffer.o)
+  add_dependencies(DataMgr DataMgrCudaTargets)
+else()
+  add_library(DataMgr ${datamgr_source_files})
+endif()
+
+add_custom_command(
+  DEPENDS BufferMgr/GpuCudaBufferMgr/GpuCudaHeteroBuffer.cu
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/GpuCudaHeteroBuffer.o
+  COMMAND nvcc
+  ARGS
+    -I ${CMAKE_SOURCE_DIR}
+    ${MAPD_HOST_COMPILER_FLAG}
+    -Xcompiler -fPIC
+    -std=c++17
+    -D_FORCE_INLINES
+    ${MAPD_DEFINITIONS}
+    ${CUDA_COMPILATION_ARCH}
+    ${NVCC_BUILD_TYPE_ARGS}
+    -c ${CMAKE_CURRENT_SOURCE_DIR}/BufferMgr/GpuCudaBufferMgr/GpuCudaHeteroBuffer.cu
+  )
 
 target_link_libraries(DataMgr CudaMgr $<$<BOOL:${ENABLE_FOLLY}>:${Folly_LIBRARIES}> Shared ${Boost_THREAD_LIBRARY} ${TBB_LIBS} ${CMAKE_DL_LIBS})
 
@@ -88,3 +125,8 @@ option(ENABLE_CRASH_CORRUPTION_TEST "Enable crash using SIGUSR2 during page dele
 if(ENABLE_CRASH_CORRUPTION_TEST)
   add_definitions("-DENABLE_CRASH_CORRUPTION_TEST")
 endif()
+
+add_custom_target(DataMgrCudaTargets
+  DEPENDS
+    ${CMAKE_CURRENT_BINARY_DIR}/GpuCudaHeteroBuffer.o
+  )

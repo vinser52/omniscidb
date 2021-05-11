@@ -104,6 +104,8 @@
 
 #include "Shared/ArrowUtil.h"
 
+#include "DataMgr/DataMgr.h"
+
 #define ENABLE_GEO_IMPORT_COLUMN_MATCHING 0
 
 #ifdef HAVE_AWS_S3

@@ -121,14 +121,13 @@ AbstractBuffer* BufferMgr::createBuffer(const ChunkKey& chunk_key,
   {
     std::lock_guard<std::mutex> lock(chunk_index_mutex_);
     CHECK(chunk_index_.find(chunk_key) == chunk_index_.end());
-    BufferSeg buffer_seg(BufferSeg(-1, 0, USED));
+    BufferSeg buffer_seg(-1, 0, USED);
     buffer_seg.chunk_key = chunk_key;
     std::lock_guard<std::mutex> unsizedSegsLock(unsized_segs_mutex_);
     unsized_segs_.push_back(buffer_seg);  // race condition?
     chunk_index_[chunk_key] =
-        std::prev(unsized_segs_.end(),
-                  1);  // need to do this before allocating Buffer because doing so could
-                       // change the segment used
+        std::prev(unsized_segs_.end()); // need to do this before allocating Buffer because doing so could
+                                        // change the segment used
   }
   // following should be safe outside the lock b/c first thing Buffer
   // constructor does is pin (and its still in unsized segs at this point

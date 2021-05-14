@@ -163,6 +163,10 @@ class DBHandler : public OmniSciIf {
             const std::string& base_data_path,
             const bool pmm,
             const std::string& pmm_path,
+#ifdef HAVE_DCPMM_STORE
+            const bool pmm_store,
+            const std::string& pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
             const bool allow_multifrag,
             const bool jit_debug,
             const bool intel_jit_profile,
@@ -600,6 +604,10 @@ class DBHandler : public OmniSciIf {
   const std::string base_data_path_;
   const bool pmm_;
   const std::string pmm_path_;
+#ifdef HAVE_DCPMM_STORE
+  const bool pmm_store_;
+  const std::string pmm_store_path_;
+#endif /* HAVE_DCPMM_STORE */
   boost::filesystem::path import_path_;
   ExecutorDeviceType executor_device_type_;
   std::default_random_engine random_gen_;

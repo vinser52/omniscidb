@@ -49,6 +49,10 @@ DataMgr::DataMgr(const std::string& dataDir,
                  std::unique_ptr<CudaMgr_Namespace::CudaMgr> cudaMgr,
                  const bool pmm,
                  const std::string& pmm_path,
+#ifdef HAVE_DCPMM_STORE               
+                 const bool pmm_store,
+                 const std::string& pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
                  const bool useGpus,
                  const size_t reservedGpuMem,
                  const size_t numReaderThreads,
@@ -57,6 +61,10 @@ DataMgr::DataMgr(const std::string& dataDir,
     , dataDir_{dataDir}
     , hasPmm_{pmm}
     , pmm_path_{pmm_path}
+#ifdef HAVE_DCPMM_STORE
+    , hasPmmStore_{pmm_store}
+    , pmm_store_path_{pmm_store_path}
+#endif /* HAVE_DCPMM_STORE */
     , hasGpus_{false}
     , reservedGpuMem_{reservedGpuMem} {
   if (useGpus) {
@@ -83,6 +91,11 @@ DataMgr::DataMgr(const std::string& dataDir,
   }
   statisticsOn_ = false;
 #endif /* HAVE_DCPMM */
+#ifdef HAVE_DCPMM_STORE
+  if (hasPmmStore_) {
+    LOG(INFO) << "Use DCPMM for persistent data store" << std::endl;
+  }
+#endif /* HAVE_DCPMM_STORE */
   populateMgrs(system_parameters, numReaderThreads, cache_config);
   createTopLevelMetadata();
 }
@@ -444,7 +457,11 @@ void DataMgr::populateMgrs(const SystemParameters& system_parameters,
   // no need for locking, as this is only called in the constructor
   bufferMgrs_.resize(2);
   bufferMgrs_[0].push_back(PersistentStorageMgr::createPersistentStorageMgr(
-      dataDir_, userSpecifiedNumReaderThreads, cache_config));
+      dataDir_,
+#ifdef HAVE_DCPMM_STORE
+      hasPmmStore_, pmm_store_path_,
+#endif /* HAVE_DCPMM_STORE */     
+      userSpecifiedNumReaderThreads, cache_config));
 
   levelSizes_.push_back(1);
   size_t page_size{512};
@@ -666,6 +683,18 @@ void DataMgr::clearMemory(const MemoryLevel memLevel) {
   }
 }
 
+#ifdef HAVE_DCPMM_STORE
+bool DataMgr::isBufferInPersistentMemory(const ChunkKey& key,
+                                         const MemoryLevel memLevel,
+                                         const int deviceId) {
+  if (memLevel == DISK_LEVEL) {
+    return bufferMgrs_[memLevel][deviceId]->isBufferInPersistentMemory(key);
+  }
+  else {
+    return false;
+  }
+}
+#endif /* HAVE_DCPMM_STORE */
 bool DataMgr::isBufferOnDevice(const ChunkKey& key,
                                const MemoryLevel memLevel,
                                const int deviceId) {
@@ -688,6 +717,24 @@ BufferProperty get_buffer_property(BufferDescriptor bd) {
   return BufferProperty::CAPACITY;
 }
 #endif /* HAVE_DCPMM */
+#ifdef HAVE_DCPMM_STORE
+AbstractBuffer* DataMgr::createChunkBuffer(BufferDescriptor bd,
+                                           const ChunkKey& key,
+                                           const MemoryLevel memoryLevel,
+                                           const size_t maxRows,
+                                           const size_t sqlTypeSize,
+                                           const int deviceId,
+                                           const size_t page_size) {
+  int level = static_cast<int>(memoryLevel);
+  if ((memoryLevel == DISK_LEVEL) && (hasPmmStore_ == true)) {
+    // use DCPMM for persistent storage
+    return bufferMgrs_[level][deviceId]->createBuffer(get_buffer_property(bd), key, maxRows, sqlTypeSize, page_size);
+  }
+  else {
+    return bufferMgrs_[level][deviceId]->createBuffer(get_buffer_property(bd), key, page_size);
+  }
+}
+#endif /* HAVE_DCPMM_STORE */
 #ifdef HAVE_DCPMM
 AbstractBuffer* DataMgr::getChunkBuffer(BufferDescriptor bd,
                                         const ChunkKey& key,

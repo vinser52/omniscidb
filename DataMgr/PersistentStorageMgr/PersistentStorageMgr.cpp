@@ -23,17 +23,37 @@
 
 PersistentStorageMgr* PersistentStorageMgr::createPersistentStorageMgr(
     const std::string& data_dir,
+#ifdef HAVE_DCPMM_STORE
+    const bool pmm_store,
+    const std::string& pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
     const size_t num_reader_threads,
     const File_Namespace::DiskCacheConfig& config) {
   if (config.isEnabledForMutableTables()) {
-    return new MutableCachePersistentStorageMgr(data_dir, num_reader_threads, config);
+    return new MutableCachePersistentStorageMgr(
+      data_dir,
+#ifdef HAVE_DCPMM_STORE
+      pmm_store,
+      pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
+      num_reader_threads, config);
   } else {
-    return new PersistentStorageMgr(data_dir, num_reader_threads, config);
+    return new PersistentStorageMgr(
+      data_dir,
+#ifdef HAVE_DCPMM_STORE
+      pmm_store,
+      pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
+      num_reader_threads, config);
   }
 }
 
 PersistentStorageMgr::PersistentStorageMgr(
     const std::string& data_dir,
+#ifdef HAVE_DCPMM_STORE
+    const bool pmm_store,
+    const std::string& pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
     const size_t num_reader_threads,
     const File_Namespace::DiskCacheConfig& disk_cache_config)
     : AbstractBufferMgr(0), disk_cache_config_(disk_cache_config) {
@@ -42,7 +62,11 @@ PersistentStorageMgr::PersistentStorageMgr(
   ::registerArrowCsvForeignStorage(fsi_);
 
   global_file_mgr_ = std::make_unique<File_Namespace::GlobalFileMgr>(
-      0, fsi_, data_dir, num_reader_threads);
+      0, fsi_,
+#ifdef HAVE_DCPMM_STORE
+      pmm_store, pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
+      data_dir, num_reader_threads);
   disk_cache_ =
       disk_cache_config_.isEnabled()
           ? std::make_unique<foreign_storage::ForeignStorageCache>(disk_cache_config)
@@ -143,6 +167,12 @@ void PersistentStorageMgr::getChunkMetadataVecForKeyPrefix(
                                                                          keyPrefix);
   }
 }
+
+#ifdef HAVE_DCPMM_STORE
+bool PersistentStorageMgr::isBufferInPersistentMemory(const ChunkKey& chunk_key) {
+  return global_file_mgr_->isBufferInPersistentMemory(chunk_key);
+}
+#endif /* HAVE_DCPMM_STORE */
 
 bool PersistentStorageMgr::isBufferOnDevice(const ChunkKey& chunk_key) {
   return global_file_mgr_->isBufferOnDevice(chunk_key);

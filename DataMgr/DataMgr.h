@@ -184,12 +184,25 @@ class DataMgr {
       std::unique_ptr<CudaMgr_Namespace::CudaMgr> cudaMgr,
       const bool pmm,
       const std::string& pmm_path,
+#ifdef HAVE_DCPMM_STORE
+      const bool pmm_store,
+      const std::string& pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
       const bool useGpus,
       const size_t reservedGpuMem = (1 << 27),
       const size_t numReaderThreads = 0, /* 0 means use default for # of reader threads */
       const File_Namespace::DiskCacheConfig cacheConfig =
           File_Namespace::DiskCacheConfig());
   ~DataMgr();
+#ifdef HAVE_DCPMM_STORE
+  AbstractBuffer* createChunkBuffer(BufferDescriptor bd,
+                                    const ChunkKey& key,
+                                    const MemoryLevel memoryLevel,
+                                    const size_t maxRows,
+                                    const size_t sqlTypeSize,
+                                    const int deviceId,
+                                    const size_t page_size);
+#endif /* HAVE_DCPMM_STORE */
   AbstractBuffer* createChunkBuffer(
 #ifdef HAVE_DCPMM
                                     BufferDescriptor bd,
@@ -222,6 +235,11 @@ class DataMgr {
   void free(AbstractBuffer* buffer);
   // copies one buffer to another
   void copy(AbstractBuffer* destBuffer, AbstractBuffer* srcBuffer);
+#ifdef HAVE_DCPMM_STORE
+  bool isBufferInPersistentMemory(const ChunkKey& key,
+                                  const MemoryLevel memLevel,
+                                  const int deviceId);
+#endif /* HAVE_DCPMM_STORE */
   bool isBufferOnDevice(const ChunkKey& key,
                         const MemoryLevel memLevel,
                         const int deviceId);
@@ -252,6 +270,10 @@ class DataMgr {
   size_t estimateDramRecommended(int percentDramPerf);
 #endif /* HAVE_DCPMM */
   inline bool pmmPresent(void) { return hasPmm_; }
+#ifdef HAVE_DCPMM_STORE
+  inline bool pmmStorePresent(void) { return hasPmmStore_; }
+#endif /* HAVE_DCPMM_STORE */
+
   // database_id, table_id, column_id, fragment_id
   std::vector<int> levelSizes_;
 
@@ -286,6 +308,10 @@ class DataMgr {
   std::string dataDir_;
   bool hasPmm_;
   std::string pmm_path_;
+#ifdef HAVE_DCPMM_STORE
+  bool hasPmmStore_;
+  std::string pmm_store_path_;
+#endif /* HAVE_DCPMM_STORE */
   bool hasGpus_;
   size_t reservedGpuMem_;
   std::mutex buffer_access_mutex_;

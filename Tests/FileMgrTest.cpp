@@ -1107,7 +1107,12 @@ class FileMgrUnitTest : public testing::Test {
       size_t num_pages = 1) {
     std::vector<int8_t> write_buffer{1, 2, 3, 4};
     auto gfm = std::make_unique<File_Namespace::GlobalFileMgr>(
-        0, fsi, file_mgr_path, 0, page_size_);
+        0, fsi,
+#ifdef HAVE_DCPMM_STORE
+        false,
+        "",
+#endif /* HAVE_DCPMM_STORE */
+        file_mgr_path, 0, page_size_);
     auto fm = dynamic_cast<File_Namespace::FileMgr*>(gfm->getFileMgr(1, 1));
     auto buffer = fm->createBuffer(
 #ifdef HAVE_DCPMM

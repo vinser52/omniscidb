@@ -48,6 +48,17 @@ std::shared_ptr<Chunk> Chunk::getChunk(const ColumnDescriptor* cd,
                                        const size_t numElems) {
   MemoryLevel level = memoryLevel;
   std::shared_ptr<Chunk> chunkp = std::make_shared<Chunk>(Chunk(cd));
+#ifdef HAVE_DCPMM_STORE
+  if ((memoryLevel == CPU_LEVEL) && (cd->isHotCol != true) && (cd->isSoftHotCol != true) 
+      && data_mgr->pmmStorePresent()
+      && data_mgr->isBufferInPersistentMemory(key, DISK_LEVEL, deviceId)) {
+      // PMM is used for storage
+      //if chunk is in PMM, get it from PMM directly
+      //
+      level = DISK_LEVEL;
+    }
+#endif /* HAVE_DCPMM_STORE */
+
   chunkp->getChunkBuffer(data_mgr, key, level, deviceId,
 #ifdef HAVE_DCPMM
                          query_id,
@@ -160,6 +171,10 @@ void Chunk::getChunkBuffer(DataMgr* data_mgr,
 void Chunk::createChunkBuffer(DataMgr* data_mgr,
                               const ChunkKey& key,
                               const MemoryLevel mem_level,
+#ifdef HAVE_DCPMM_STORE
+                              const size_t maxRows,
+                              const int sqlTypeSize,
+#endif /* HAVE_DCPMM_STORE */
                               const int device_id,
                               const size_t page_size) {
 #ifdef HAVE_DCPMM
@@ -169,27 +184,39 @@ void Chunk::createChunkBuffer(DataMgr* data_mgr,
       !column_desc_->columnType.is_fixlen_array()) {
     ChunkKey subKey = key;
     subKey.push_back(1);  // 1 for the main buffer_
+#ifdef HAVE_DCPMM_STORE
+    buffer_ = data_mgr->createChunkBuffer(bd, subKey, mem_level, maxRows, sqlTypeSize, device_id, page_size);
+#else /* HAVE_DCPMM_STORE */
     buffer_ = data_mgr->createChunkBuffer(
 #ifdef HAVE_DCPMM
                                           bd,
 #endif /* HAVE_DCPMM */
                                           subKey, mem_level, device_id, page_size);
+#endif /* HAVE_DCPMM_STORE */
     subKey.pop_back();
     subKey.push_back(2);  // 2 for the index buffer_
 #ifdef HAVE_DCPMM
     bd.isIndex = true;
 #endif /* HAVE_DCPMM */
+#ifdef HAVE_DCPMM_STORE
+    index_buf_ = data_mgr->createChunkBuffer(bd, subKey, mem_level, maxRows, sqlTypeSize, device_id, page_size);
+#else /* HAVE_DCPMM_STORE */
     index_buf_ = data_mgr->createChunkBuffer(
 #ifdef HAVE_DCPMM
       bd,
 #endif /* HAVE_DCPMM */
       subKey, mem_level, device_id, page_size);
+#endif /* HAVE_DCPMM_STORE */
   } else {
+#ifdef HAVE_DCPMM_STORE
+    buffer_ = data_mgr->createChunkBuffer(bd, key, mem_level, maxRows, sqlTypeSize, device_id, page_size);
+#else /* HAVE_DCPMM_STORE */
     buffer_ = data_mgr->createChunkBuffer(
 #ifdef HAVE_DCPMM
                                           bd,
 #endif /* HAVE_DCPMM */
                                           key, mem_level, device_id, page_size);
+#endif /* HAVE_DCPMM_STORE */
   }
 }
 

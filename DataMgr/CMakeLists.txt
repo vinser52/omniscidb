@@ -24,12 +24,14 @@ set(datamgr_source_files
     Chunk/Chunk.cpp
     DataMgr.cpp
     Encoder.cpp
+    Pmem.cpp
     StringNoneEncoder.cpp
     FileMgr/CachingFileMgr.cpp
     FileMgr/GlobalFileMgr.cpp
     FileMgr/FileMgr.cpp
     FileMgr/FileBuffer.cpp
     FileMgr/FileInfo.cpp
+    FileMgr/PmmPersistentBufferMgr.cpp
     ForeignStorage/AbstractTextFileDataWrapper.cpp
     ForeignStorage/ArrowForeignStorage.cpp
     ForeignStorage/CacheEvictionAlgorithms/LRUEvictionAlgorithm.cpp

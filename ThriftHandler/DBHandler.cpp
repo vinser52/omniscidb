@@ -233,6 +233,10 @@ DBHandler::DBHandler(const std::vector<LeafHostInfo>& db_leaves,
                      const std::string& base_data_path,
                      const bool pmm,
                      const std::string& pmm_path,
+#ifdef HAVE_DCPMM_STORE
+                     const bool pmm_store,
+                     const std::string& pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
                      const bool allow_multifrag,
                      const bool jit_debug,
                      const bool intel_jit_profile,
@@ -267,6 +271,10 @@ DBHandler::DBHandler(const std::vector<LeafHostInfo>& db_leaves,
     , base_data_path_(base_data_path)
     , pmm_(pmm)
     , pmm_path_(pmm_path)
+#ifdef HAVE_DCPMM_STORE
+    , pmm_store_(pmm_store)
+    , pmm_store_path_(pmm_store_path)
+#endif /* HAVE_DCPMM_STORE */
     , random_gen_(std::random_device{}())
     , session_id_dist_(0, INT32_MAX)
     , jit_debug_(jit_debug)
@@ -364,6 +372,10 @@ void DBHandler::initialize(const bool is_new_db) {
                                                 std::move(cuda_mgr),
                                                 pmm_,
                                                 pmm_path_,
+#ifdef HAVE_DCPMM_STORE
+                                                pmm_store_,
+                                                pmm_store_path_,
+#endif /* HAVE_DCPMM_STORE */
                                                 !cpu_mode_only_,
                                                 total_reserved,
                                                 num_reader_threads_,

@@ -27,12 +27,32 @@ class PersistentStorageMgr : public AbstractBufferMgr {
  public:
   static PersistentStorageMgr* createPersistentStorageMgr(
       const std::string& data_dir,
+#ifdef HAVE_DCPMM_STORE
+      const bool pmm_store,
+      const std::string& pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
       const size_t num_reader_threads,
       const File_Namespace::DiskCacheConfig& disk_cache_config);
 
   PersistentStorageMgr(const std::string& data_dir,
+#ifdef HAVE_DCPMM_STORE
+                       const bool pmm_store,
+                       const std::string& pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
                        const size_t num_reader_threads,
                        const File_Namespace::DiskCacheConfig& disk_cache_config);
+
+#ifdef HAVE_DCPMM_STORE
+  AbstractBuffer* createBuffer(BufferProperty bufProp,
+                               const ChunkKey& key,
+                               const size_t maxRows,
+                               const int sqlTypeSize,
+                               const size_t page_size) override {
+                                 AbstractBuffer *buffer = createBuffer(bufProp, key, page_size, maxRows * sqlTypeSize);
+                                 buffer->setMaxRows(maxRows);
+                                 return buffer;
+                               }
+#endif /* HAVE_DCPMM_STORE */
 
   AbstractBuffer* createBuffer(
 #ifdef HAVE_DCPMM
@@ -57,6 +77,9 @@ class PersistentStorageMgr : public AbstractBufferMgr {
                             const size_t num_bytes) override;
   void getChunkMetadataVecForKeyPrefix(ChunkMetadataVector& chunk_metadata,
                                        const ChunkKey& chunk_key_prefix) override;
+#ifdef HAVE_DCPMM_STORE
+  bool isBufferInPersistentMemory(const ChunkKey& chunk_key) override;
+#endif /* HAVE_DCPMM_STORE */
   bool isBufferOnDevice(const ChunkKey& chunk_key) override;
   std::string printSlabs() override;
   size_t getMaxSize() override;

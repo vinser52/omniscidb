@@ -419,6 +419,10 @@ int startMapdServer(CommandLineOptions& prog_config_opts, bool start_http_server
                                       prog_config_opts.base_path,
                                       prog_config_opts.pmm,
                                       prog_config_opts.pmm_path,
+#ifdef HAVE_DCPMM_STORE
+                                       prog_config_opts.pmm_store,
+                                       prog_config_opts.pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
                                       prog_config_opts.allow_multifrag,
                                       prog_config_opts.jit_debug,
                                       prog_config_opts.intel_jit_profile,

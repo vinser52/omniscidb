@@ -38,6 +38,9 @@ class MapDProgramOptions : public boost::program_options::options_description {
   std::string cluster_file = {"cluster.conf"};
   bool cpu_only = false;
   bool pmm = false;
+#ifdef HAVE_DCPMM_STORE
+  bool pmm_store = false;
+#endif /* HAVE_DCPMM_STORE */
   bool flush_log = true;
   bool verbose_logging = false;
   bool jit_debug = false;

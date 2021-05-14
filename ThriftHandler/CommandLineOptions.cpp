@@ -103,6 +103,11 @@ void CommandLineOptions::fillOptions() {
                           po::value<size_t>(&system_parameters.cpu_buffer_mem_bytes)
                               ->default_value(system_parameters.cpu_buffer_mem_bytes),
                           "Size of memory reserved for CPU buffers, in bytes.");
+#ifdef HAVE_DCPMM_STORE
+  help_desc.add_options()("pmm-store",
+                          po::value<std::string>(&pmm_store_path),
+                          "Path to file containing Intel(R) DCPMM mount points for storage");
+#endif /* HAVE_DCPMM_STORE */
   help_desc.add_options()("pmm",
                           po::value<std::string>(&pmm_path),
                           "Path to directory containing Intel(R) DCPMM mount points for cold columns");
@@ -1086,6 +1091,17 @@ boost::optional<int> CommandLineOptions::parse_command_line(
 
     pmm = true;
   }
+#ifdef HAVE_DCPMM_STORE
+  boost::algorithm::trim_if(pmm_store_path, boost::is_any_of("\"'"));
+  if (pmm_store_path.length() >0) {
+    if (!boost::filesystem::exists(pmm_store_path)) {
+      LOG(FATAL) << "File " <<  pmm_store_path << " does not exist" << std::endl;
+      return 1;
+    }
+    pmm_store = true;
+  }
+#endif /* HAVE_DCPMM_STORE */
+
   if (!g_from_table_reordering) {
     LOG(INFO) << " From clause table reordering is disabled";
   }

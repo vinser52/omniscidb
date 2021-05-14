@@ -31,6 +31,11 @@
 #include "Shared/File.h"
 #include "Shared/checked_alloc.h"
 
+#ifdef HAVE_DCPMM_STORE
+#include "../Pmem.h"
+#include "PmmPersistentBufferMgr.h"
+#endif /* HAVE_DCPMM_STORE */
+
 using namespace std;
 
 namespace File_Namespace {
@@ -43,6 +48,10 @@ FileBuffer::FileBuffer(FileMgr* fm,
     , fm_(fm)
     , metadataPages_(METADATA_PAGE_SIZE)
     , pageSize_(pageSize)
+#ifdef HAVE_DCPMM_STORE
+    , pmmMem_(NULL)
+    , pmmBufferDescriptor_(NULL)
+#endif /* HAVE_DCPMM_STORE */
     , chunkKey_(chunkKey) {
   // Create a new FileBuffer
   CHECK(fm_);
@@ -73,6 +82,10 @@ FileBuffer::FileBuffer(FileMgr* fm,
     , fm_(fm)
     , metadataPages_(METADATA_PAGE_SIZE)
     , pageSize_(pageSize)
+#ifdef HAVE_DCPMM_STORE
+    , pmmMem_(NULL)
+    , pmmBufferDescriptor_(NULL)
+#endif /* HAVE_DCPMM_STORE */
     , chunkKey_(chunkKey) {
   CHECK(fm_);
   calcHeaderBuffer();
@@ -87,6 +100,10 @@ FileBuffer::FileBuffer(FileMgr* fm,
     , fm_(fm)
     , metadataPages_(METADATA_PAGE_SIZE)
     , pageSize_(0)
+#ifdef HAVE_DCPMM_STORE
+    , pmmMem_(NULL)
+    , pmmBufferDescriptor_(NULL)
+#endif /* HAVE_DCPMM_STORE */
     , chunkKey_(chunkKey) {
   // We are being assigned an existing FileBuffer on disk
 
@@ -124,6 +141,22 @@ FileBuffer::FileBuffer(FileMgr* fm,
     initMetadataAndPageDataSize();
   }
 }
+
+#ifdef HAVE_DCPMM_STORE
+FileBuffer::FileBuffer(FileMgr *fm, ChunkKey chunkKey, int8_t * pmmAddr, PersistentBufferDescriptor *p, bool existed)
+    : AbstractBuffer(fm->getDeviceId())
+    , fm_(fm)
+    , metadataPages_(METADATA_PAGE_SIZE)
+    , pageSize_(2 * 1024 * 1024)    // default page size 2MB
+    , pmmMem_(pmmAddr)
+    , pmmBufferDescriptor_(p)
+    , chunkKey_(chunkKey)
+{
+  if (existed) {
+    readMetadata();
+  }
+}
+#endif /* HAVE_DCPMM_STORE */
 
 FileBuffer::~FileBuffer() {
   // need to free pages
@@ -289,6 +322,51 @@ void FileBuffer::read(int8_t* const dst,
     LOG(FATAL) << "Unsupported Buffer type";
   }
 
+#ifdef HAVE_DCPMM_STORE
+  if (pmmMem_) {
+    // pmmMem_ is always pageSize_ aligned
+    size_t unitSize = 2 * pageSize_;
+    size_t numPagesToRead = (numBytes + (offset % unitSize) + unitSize - 1) / unitSize;
+    if ((fm_->getNumReaderThreads() == 1) || (numPagesToRead == 1)) {
+      memcpy(dst, pmmMem_ + offset, numBytes);
+      return;
+    }
+
+    size_t numPagesPerThread;
+    size_t numThreads = fm_->getNumReaderThreads();
+    if (numPagesToRead > numThreads) {
+      numPagesPerThread = numPagesToRead / numThreads;
+    } else {
+      numThreads = numPagesToRead;
+      numPagesPerThread = 1;
+    }
+
+
+    int8_t *sliceDst = dst;
+    int8_t *sliceSrc = pmmMem_ + offset;
+    size_t sliceSize = unitSize * numPagesPerThread  - (offset % unitSize);
+    std::vector<std::future<size_t>> threads;
+    threads.push_back(std::async(std::launch::async, [=]{memcpy(sliceDst, sliceSrc, sliceSize); return sliceSize;}));
+    sliceDst += sliceSize;
+    sliceSrc += sliceSize;
+    sliceSize = unitSize * numPagesPerThread;
+
+    for (size_t i = 0; i < numThreads - 2; i++) {
+      threads.push_back(std::async(std::launch::async, [=]{memcpy(sliceDst, sliceSrc, sliceSize); return sliceSize;}));
+      sliceDst += sliceSize;
+      sliceSrc += sliceSize;
+    }
+
+    memcpy(sliceDst, sliceSrc, (numBytes + (offset % unitSize)) - (numPagesPerThread * unitSize * (numThreads - 1)));
+
+    for (auto& p : threads) {
+      p.wait();
+    }
+
+    return;
+  }
+#endif /* HAVE_DCPMM_STORE */
+
   // variable declarations
   size_t startPage = offset / pageDataSize_;
   size_t startPageOffset = offset % pageDataSize_;
@@ -430,6 +508,36 @@ void FileBuffer::writeHeader(Page& page,
       page.pageNum * pageSize, (intHeaderSize) * sizeof(int32_t), (int8_t*)&header[0]);
 }
 
+#ifdef HAVE_DCPMM_STORE
+void FileBuffer::readMetadata(void)
+{
+  if (!pmmBufferDescriptor_) {
+    size_ = 0;
+    return;
+  }
+
+  //pageSize_ = pmmBufferDescriptor_->pageSize;
+  pageSize_ = fm_->getPersistentBufferPageSize();
+  size_ = pmmBufferDescriptor_->size;
+
+  int version = pmmBufferDescriptor_->metaData[0];
+  CHECK(version == METADATA_VERSION);  // add backward compatibility code here
+  bool has_encoder = static_cast<bool>(pmmBufferDescriptor_->metaData[1]);
+  if (has_encoder) {
+    sql_type_.set_type(static_cast<SQLTypes>(pmmBufferDescriptor_->metaData[2]));
+    sql_type_.set_subtype(static_cast<SQLTypes>(pmmBufferDescriptor_->metaData[3]));
+    sql_type_.set_dimension(pmmBufferDescriptor_->metaData[4]);
+    sql_type_.set_scale(pmmBufferDescriptor_->metaData[5]);
+    sql_type_.set_notnull(static_cast<bool>(pmmBufferDescriptor_->metaData[6]));
+    sql_type_.set_compression(static_cast<EncodingType>(pmmBufferDescriptor_->metaData[7]));
+    sql_type_.set_comp_param(pmmBufferDescriptor_->metaData[8]);
+    sql_type_.set_size(pmmBufferDescriptor_->metaData[9]);
+    initEncoder(sql_type_);
+    encoder_->readMetadata(pmmBufferDescriptor_->encoderMetaData);
+  }
+}
+#endif /* HAVE_DCPMM_STORE */
+
 void FileBuffer::readMetadata(const Page& page) {
   FILE* f = fm_->getFileForFileId(page.fileId);
   fseek(f, page.pageNum * METADATA_PAGE_SIZE + reservedHeaderSize_, SEEK_SET);
@@ -457,6 +565,40 @@ void FileBuffer::readMetadata(const Page& page) {
 }
 
 void FileBuffer::writeMetadata(const int32_t epoch) {
+#ifdef HAVE_DCPMM_STORE
+  if (pmmBufferDescriptor_) {
+    pmmBufferDescriptor_->size = size_;
+    size_t pSize = fm_->getPersistentBufferPageSize();
+    if ((pSize * pmmBufferDescriptor_->numPages) - size_ > pSize) {
+      fm_->shrinkPersistentBuffer(pmmBufferDescriptor_, pmmMem_);
+    }
+
+    pmmBufferDescriptor_->metaData[0] = METADATA_VERSION;
+    pmmBufferDescriptor_->metaData[1] = static_cast<int32_t>(hasEncoder());
+    if (hasEncoder()) {
+      pmmBufferDescriptor_->metaData[2] = static_cast<int32_t>(sql_type_.get_type());
+      pmmBufferDescriptor_->metaData[3] = static_cast<int32_t>(sql_type_.get_subtype());
+      pmmBufferDescriptor_->metaData[4] = sql_type_.get_dimension();
+      pmmBufferDescriptor_->metaData[5] = sql_type_.get_scale();
+      pmmBufferDescriptor_->metaData[6] = static_cast<int32_t>(sql_type_.get_notnull());
+      pmmBufferDescriptor_->metaData[7] = static_cast<int32_t>(sql_type_.get_compression());
+      pmmBufferDescriptor_->metaData[8] = sql_type_.get_comp_param();
+      pmmBufferDescriptor_->metaData[9] = sql_type_.get_size();
+    }
+    PmemPersist(&(pmmBufferDescriptor_->metaData[0]), sizeof(pmmBufferDescriptor_->metaData));
+
+    if (hasEncoder()) {  // redundant
+      encoder_->writeMetadata(pmmBufferDescriptor_->encoderMetaData);
+      PmemPersist(pmmBufferDescriptor_->encoderMetaData, sizeof(pmmBufferDescriptor_->encoderMetaData));
+      }
+
+    pmmBufferDescriptor_->epoch = epoch;
+    PmemPersist(&(pmmBufferDescriptor_->epoch), sizeof(pmmBufferDescriptor_->epoch));
+
+    return;
+  }
+#endif /* HAVE_DCPMM_STORE */
+
   // Right now stats page is size_ (in bytes), bufferType, encodingType,
   // encodingDataType, numElements
   Page page = fm_->requestFreePage(METADATA_PAGE_SIZE, true);
@@ -492,6 +634,26 @@ void FileBuffer::append(int8_t* src,
                         const MemoryLevel srcBufferType,
                         const int32_t deviceId) {
   setAppended();
+
+#ifdef HAVE_DCPMM_STORE
+  if (fm_->isPersistentMemoryPresent()) {
+    if (pmmMem_) {
+      if ((numBytes + size_) > (fm_->getPersistentBufferPageSize() * pmmBufferDescriptor_->numPages)) {
+        pmmMem_ = fm_->reallocatePersistentBuffer(chunkKey_, pmmMem_,  numBytes + size_, &pmmBufferDescriptor_);
+      }
+    }
+    else {
+      if (size_ != 0) {
+        LOG(FATAL) << "First time to append to an empty buffer with non-zero size";
+      }
+      pmmMem_ = fm_->allocatePersistentBuffer(chunkKey_, numBytes + size_, &pmmBufferDescriptor_);
+    }
+    pmmBufferDescriptor_->setEpoch(getFileMgrEpoch());
+    PmemMemCpy((char *)pmmMem_ + size_, (char *)src, numBytes);
+    size_ += numBytes;
+    return;
+  }
+#endif /* HAVE_DCPMM_STORE */
 
   size_t startPage = size_ / pageDataSize_;
   size_t startPageOffset = size_ % pageDataSize_;
@@ -540,6 +702,23 @@ void FileBuffer::write(int8_t* src,
 
   bool tempIsAppended = false;
   setDirty();
+#ifdef HAVE_DCPMM_STORE
+  if (fm_->isPersistentMemoryPresent()) {
+    if (pmmMem_) {
+      if ((numBytes + offset) > (fm_->getPersistentBufferPageSize() * pmmBufferDescriptor_->numPages)) {
+        pmmMem_ = fm_->reallocatePersistentBuffer(chunkKey_, pmmMem_, numBytes + offset, &pmmBufferDescriptor_);
+      }
+    }
+    else {
+      if (size_ != 0) {
+        LOG(FATAL) << "First time to append to an empty buffer with non-zero size";
+      }
+      pmmMem_ = fm_->allocatePersistentBuffer(chunkKey_, numBytes + offset, &pmmBufferDescriptor_);
+    }
+    pmmBufferDescriptor_->setEpoch(getFileMgrEpoch());
+    PmemMemCpy((char *)pmmMem_ + offset, (char *)src, numBytes);
+  }
+#endif /* HAVE_DCPMM_STORE */
   if (offset < size_) {
     setUpdated();
   }
@@ -549,6 +728,12 @@ void FileBuffer::write(int8_t* src,
     setAppended();
     size_ = offset + numBytes;
   }
+
+#ifdef HAVE_DCPMM_STORE
+  if (fm_->isPersistentMemoryPresent()) {
+    return;
+  }
+#endif /* HAVE_DCPMM_STORE */
 
   size_t startPage = offset / pageDataSize_;
   size_t startPageOffset = offset % pageDataSize_;
@@ -633,6 +818,13 @@ std::string FileBuffer::dump() const {
   ss << "size_ = " << size_ << "\n";
   return ss.str();
 }
+#ifdef HAVE_DCPMM_STORE
+void FileBuffer::constructPersistentBuffer(int8_t *addr, PersistentBufferDescriptor *p)
+{
+  pmmMem_ = addr;
+  pmmBufferDescriptor_ = p;
+}
+#endif /* HAVE_DCPMM_STORE */
 
 void FileBuffer::initMetadataAndPageDataSize() {
   CHECK(metadataPages_.current().page.fileId != -1);  // was initialized

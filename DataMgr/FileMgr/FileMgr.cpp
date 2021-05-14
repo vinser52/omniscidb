@@ -313,7 +313,12 @@ void FileMgr::init(const size_t num_reader_threads, const int32_t epochOverride)
     incrementEpoch();
   }
 
+#ifdef HAVE_DCPMM_STORE
+  gfm_->constructPersistentBuffers(this);
+#endif /* HAVE_DCPMM_STORE */
+
   initializeNumThreads(num_reader_threads);
+
   isFullyInitted_ = true;
 }
 
@@ -725,9 +730,33 @@ FileBuffer* FileMgr::createBufferFromHeaders(
   mapd_unique_lock<mapd_shared_mutex> chunkIndexWriteLock(chunkIndexMutex_);
   CHECK(chunkIndex_.find(key) == chunkIndex_.end())
       << "Chunk already exists for key: " << show_chunk(key);
+
+#ifdef HAVE_DCPMM_STORE
+  if (gfm_->isPersistentMemoryPresent()) {
+    PersistentBufferDescriptor *desc = NULL;
+    int8_t *addr = NULL;
+
+    if (numBytes != 0) {
+      addr = gfm_->allocatePersistentBuffer(key, numBytes, &desc);
+    }
+    chunkIndex_[key] = new FileBuffer(this, key, addr, desc, false);
+  }
+  else {
+    chunkIndex_[key] = allocateBuffer(key, headerStartIt, headerEndIt);
+  }
+#else /* HAVE_DCPMM_STORE */
   chunkIndex_[key] = allocateBuffer(key, headerStartIt, headerEndIt);
+#endif /* HAVE_DCPMM_STORE */
   return (chunkIndex_[key]);
 }
+
+#ifdef HAVE_DCPMM_STORE
+bool FileMgr::isBufferInPersistentMemory(const ChunkKey& key) {
+  mapd_shared_lock<mapd_shared_mutex> chunkIndexReadLock(chunkIndexMutex_);
+  auto it = chunkIndex_.find(key);
+  return ((it != chunkIndex_.end()) && (it->second->pmmMem_ != NULL));
+}
+#endif /* HAVE_DCPMM_STORE */
 
 bool FileMgr::isBufferOnDevice(const ChunkKey& key) {
   mapd_shared_lock<mapd_shared_mutex> chunkIndexReadLock(chunkIndexMutex_);
@@ -745,6 +774,13 @@ void FileMgr::deleteBuffer(const ChunkKey& key, const bool purge) {
 ChunkKeyToChunkMap::iterator FileMgr::deleteBufferUnlocked(
     const ChunkKeyToChunkMap::iterator chunk_it,
     const bool purge) {
+#ifdef HAVE_DCPMM_STORE
+  if (chunk_it->second->pmmMem_) {
+    gfm_->deletePersistentBuffer(chunk_it->second->pmmBufferDescriptor_, chunk_it->second->pmmMem_);
+    chunk_it->second->pmmMem_ = NULL;
+    chunk_it->second->pmmBufferDescriptor_ = NULL;
+  }
+#endif /* HAVE_DCPMM_STORE */
   if (purge) {
     chunk_it->second->freePages();
   }
@@ -810,7 +846,12 @@ void FileMgr::fetchBuffer(const ChunkKey& key,
 FileBuffer* FileMgr::putBuffer(const ChunkKey& key,
                                AbstractBuffer* srcBuffer,
                                const size_t numBytes) {
-  auto chunk = getOrCreateBuffer(key);
+  auto chunk = getOrCreateBuffer(
+    key
+#ifdef HAVE_DCPMM_STORE
+    , srcBuffer
+#endif /* HAVE_DCPMM_STORE */
+    );
   size_t oldChunkSize = chunk->size();
   // write the buffer's data to the Chunk
   size_t newChunkSize = (numBytes == 0) ? srcBuffer->size() : numBytes;
@@ -1587,7 +1628,12 @@ bool FileMgr::updatePageIfDeleted(FileInfo* file_info,
   return false;
 }
 
-FileBuffer* FileMgr::getOrCreateBuffer(const ChunkKey& key) {
+FileBuffer* FileMgr::getOrCreateBuffer(
+  const ChunkKey& key
+#ifdef HAVE_DCPMM_STORE
+  , AbstractBuffer* srcBuffer
+#endif /* HAVE_DCPMM_STORE */
+) {
   FileBuffer* buf;
   mapd_unique_lock<mapd_shared_mutex> chunkIndexWriteLock(chunkIndexMutex_);
   auto chunk_it = chunkIndex_.find(key);
@@ -1616,4 +1662,53 @@ size_t FileMgr::getNumChunks() {
 
 size_t FileMgr::num_pages_per_data_file_{DEFAULT_NUM_PAGES_PER_DATA_FILE};
 size_t FileMgr::num_pages_per_metadata_file_{DEFAULT_NUM_PAGES_PER_METADATA_FILE};
+
+#ifdef HAVE_DCPMM_STORE
+void
+FileMgr::constructPersistentBuffer(ChunkKey key, PersistentBufferDescriptor *p, int8_t *addr)
+{
+  if (p->getEpoch() >= epoch_.ceiling()) {
+    LOG(FATAL) << "Persistent buffer was not checkpointed";
+  }
+  mapd_shared_lock<mapd_shared_mutex> chunkIndexWriteLock(chunkIndexMutex_);
+  auto chunkIt = chunkIndex_.find(key);
+  if (chunkIt == chunkIndex_.end()) {
+    // buffer is only in PMM
+    chunkIndex_[key] = new FileBuffer(this, key, addr, p, true);
+  }
+  else {
+    // should not be here,any way
+    // buffer already loaded from disk?
+    chunkIt->second->constructPersistentBuffer(addr, p);;
+  }
+}
+
+int8_t *
+FileMgr::reallocatePersistentBuffer(ChunkKey key, int8_t *addr, size_t numBytes, PersistentBufferDescriptor **desc)
+{
+  return gfm_->reallocatePersistentBuffer(key, addr, numBytes, desc);
+}
+
+void
+FileMgr::shrinkPersistentBuffer(PersistentBufferDescriptor *p, int8_t *addr)
+{
+  return gfm_->shrinkPersistentBuffer(p, addr);
+}
+
+int8_t *
+FileMgr::allocatePersistentBuffer(ChunkKey key, size_t numBytes, PersistentBufferDescriptor **desc)
+{
+  return gfm_->allocatePersistentBuffer(key, numBytes, desc);
+}
+
+bool FileMgr::isPersistentMemoryPresent(void)
+{
+  return gfm_->isPersistentMemoryPresent();
+}
+
+size_t FileMgr::getPersistentBufferPageSize(void)
+{
+  return gfm_->getPersistentBufferPageSize();
+}
+#endif /* HAVE_DCPMM_STORE */
 }  // namespace File_Namespace

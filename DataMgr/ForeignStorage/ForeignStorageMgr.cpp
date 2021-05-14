@@ -276,6 +276,13 @@ void ForeignStorageMgr::deleteBuffersWithPrefix(const ChunkKey& chunk_key_prefix
   UNREACHABLE();
 }
 
+#ifdef HAVE_DCPMM_STORE
+bool ForeignStorageMgr::isBufferInPersistentMemory(const ChunkKey& chunk_key) {
+  UNREACHABLE();
+  return false;  // Added to avoid "no return statement" compiler warning
+}
+#endif /* HAVE_DCPMM_STORE */
+
 bool ForeignStorageMgr::isBufferOnDevice(const ChunkKey& chunk_key) {
   UNREACHABLE();
   return false;  // Added to avoid "no return statement" compiler warning
@@ -285,6 +292,17 @@ size_t ForeignStorageMgr::getNumChunks() {
   UNREACHABLE();
   return 0;  // Added to avoid "no return statement" compiler warning
 }
+
+#ifdef HAVE_DCPMM_STORE
+AbstractBuffer* ForeignStorageMgr::createBuffer(BufferProperty bufProp,
+                                                const ChunkKey& key,
+                                                const size_t maxRows,
+                                                const int sqlTypeSize,
+                                                const size_t page_size) {
+  UNREACHABLE();
+  return nullptr;  // Added to avoid "no return statement" compiler warning
+}
+#endif /* HAVE_DCPMM_STORE */
 
 AbstractBuffer* ForeignStorageMgr::createBuffer(
 #ifdef HAVE_DCPMM

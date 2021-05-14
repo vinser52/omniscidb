@@ -18,12 +18,37 @@
 
 MutableCachePersistentStorageMgr::MutableCachePersistentStorageMgr(
     const std::string& data_dir,
+#ifdef HAVE_DCPMM_STORE
+    const bool pmm_store,
+    const std::string& pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
     const size_t num_reader_threads,
     const File_Namespace::DiskCacheConfig& disk_cache_config)
-    : PersistentStorageMgr(data_dir, num_reader_threads, disk_cache_config) {
+    : PersistentStorageMgr(
+        data_dir,
+#ifdef HAVE_DCPMM_STORE
+        pmm_store,
+        pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
+        num_reader_threads, disk_cache_config) {
   CHECK(disk_cache_);
   CHECK(disk_cache_config_.isEnabledForMutableTables());
 }
+
+#ifdef HAVE_DCPMM_STORE
+  AbstractBuffer* MutableCachePersistentStorageMgr::createBuffer(
+    BufferProperty bufProp,
+    const ChunkKey& chunk_key,
+    const size_t maxRows,
+    const int sqlTypeSize,
+    const size_t page_size) {
+  auto buf = PersistentStorageMgr::createBuffer(bufProp, chunk_key, maxRows, sqlTypeSize, page_size);
+  if (isChunkPrefixCacheable(chunk_key)) {
+    cached_chunk_keys_.emplace(chunk_key);
+  }
+  return buf;
+}
+#endif /* HAVE_DCPMM_STORE */
 
 AbstractBuffer* MutableCachePersistentStorageMgr::createBuffer(
 #ifdef HAVE_DCPMM

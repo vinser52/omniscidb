@@ -51,6 +51,13 @@ class MockForeignDataWrapper : public ForeignDataWrapper {
 class ForeignStorageMgr : public AbstractBufferMgr {
  public:
   ForeignStorageMgr();
+#ifdef HAVE_DCPMM_STORE
+  AbstractBuffer* createBuffer(BufferProperty bufProp,
+                               const ChunkKey& key,
+                               const size_t maxRows,
+                               const int sqlTypeSize,
+                               const size_t page_size) override;
+#endif /* HAVE_DCPMM_STORE */
   AbstractBuffer* createBuffer(
 #ifdef HAVE_DCPMM
                                BufferProperty bufProp,
@@ -78,6 +85,9 @@ class ForeignStorageMgr : public AbstractBufferMgr {
    */
   void getChunkMetadataVecForKeyPrefix(ChunkMetadataVector& chunk_metadata,
                                        const ChunkKey& chunk_key_prefix) override;
+#ifdef HAVE_DCPMM_STORE
+  bool isBufferInPersistentMemory(const ChunkKey& chunk_key) override;
+#endif /* HAVE_DCPMM_STORE */
   bool isBufferOnDevice(const ChunkKey& chunk_key) override;
   std::string printSlabs() override;
   size_t getMaxSize() override;

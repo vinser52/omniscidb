@@ -123,6 +123,18 @@ class ForeignStorageBufferMgr : public Data_Namespace::AbstractBufferMgr {
 
   void checkpoint() override;
 
+#ifdef HAVE_DCPMM_STORE
+  Data_Namespace::AbstractBuffer* createBuffer(BufferProperty bufProp,
+                                               const ChunkKey& key,
+                                               const size_t maxRows,
+                                               const int sqlTypeSize,
+                                               const size_t pageSize) override {
+                                                 AbstractBuffer *buffer = createBuffer(bufProp, key, pageSize, maxRows * sqlTypeSize);
+                                                 buffer->setMaxRows(maxRows);
+                                                 return buffer;
+                                               }
+#endif /* HAVE_DCPMM_STORE */
+
   Data_Namespace::AbstractBuffer* createBuffer(
 #ifdef HAVE_DCPMM
                                                BufferProperty bufProp,
@@ -166,6 +178,13 @@ class ForeignStorageBufferMgr : public Data_Namespace::AbstractBufferMgr {
     CHECK(false);
     return nullptr;
   }
+
+#ifdef HAVE_DCPMM_STORE
+  bool isBufferInPersistentMemory(const ChunkKey& key) override {
+    CHECK(false);
+    return false;
+  }
+#endif /* HAVE_DCPMM_STORE */
 
   bool isBufferOnDevice(const ChunkKey& key) override {
     CHECK(false);

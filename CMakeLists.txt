@@ -138,6 +138,11 @@ if(ENABLE_DCPMM)
   add_definitions("-DHAVE_DCPMM")
 endif()
 
+option(ENABLE_DCPMM_STORE "Enable Persistent usage of DCPMM" OFF)
+if(ENABLE_DCPMM_STORE)
+  add_definitions("-DHAVE_DCPMM_STORE")
+endif()
+
 option(ENABLE_CUDA "Enable CUDA support" ON)
 if(ENABLE_CUDA)
   find_package(CUDA REQUIRED)

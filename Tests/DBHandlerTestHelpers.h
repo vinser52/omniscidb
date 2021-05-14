@@ -253,6 +253,10 @@ class DBHandlerTestFixture : public testing::Test {
                                                 BASE_PATH,
                                                 false,
                                                 "",
+#ifdef HAVE_DCPMM_STORE
+                                                false,
+                                                "",
+#endif /* HAVE_DCPMM_STORE */
                                                 allow_multifrag,
                                                 jit_debug,
                                                 intel_jit_profile,

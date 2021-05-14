@@ -37,17 +37,35 @@ class PersistentStorageMgrTest : public testing::Test {
 };
 
 TEST_F(PersistentStorageMgrTest, DiskCache_CustomPath) {
-  PersistentStorageMgr psm(data_path, 0, {cache_path_, DiskCacheLevel::fsi});
+  PersistentStorageMgr psm(
+    data_path,
+#ifdef HAVE_DCPMM_STORE
+    false, // pmm_store
+    "", // pmm_store_path
+#endif /* HAVE_DCPMM_STORE */
+    0, {cache_path_, DiskCacheLevel::fsi});
   ASSERT_EQ(psm.getDiskCache()->getCacheDirectory(), cache_path_);
 }
 
 TEST_F(PersistentStorageMgrTest, DiskCache_InitializeWithoutCache) {
-  PersistentStorageMgr psm(data_path, 0, {});
+  PersistentStorageMgr psm(
+    data_path,
+#ifdef HAVE_DCPMM_STORE
+    false, // pmm_store
+    "", // pmm_store_path
+#endif /* HAVE_DCPMM_STORE */
+    0, {});
   ASSERT_EQ(psm.getDiskCache(), nullptr);
 }
 
 TEST_F(PersistentStorageMgrTest, MutableDiskCache_CustomPath) {
-  MutableCachePersistentStorageMgr psm(data_path, 0, {cache_path_, DiskCacheLevel::all});
+  MutableCachePersistentStorageMgr psm(
+    data_path,
+#ifdef HAVE_DCPMM_STORE
+    false, // pmm_store
+    "", // pmm_store_path
+#endif /* HAVE_DCPMM_STORE */
+    0, {cache_path_, DiskCacheLevel::all});
   ASSERT_EQ(psm.getDiskCache()->getCacheDirectory(), cache_path_);
 }
 

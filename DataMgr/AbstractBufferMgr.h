@@ -74,6 +74,13 @@ class AbstractBufferMgr {
   AbstractBufferMgr(const int deviceId) : device_id_(deviceId) {}
 
   // Chunk API
+#ifdef HAVE_DCPMM_STORE
+  virtual AbstractBuffer* createBuffer(BufferProperty bufProp,
+                                       const ChunkKey& key,
+                                       const size_t maxRows,
+                                       const int sqlTypeSize,
+                                       const size_t pageSize) = 0;
+#endif /* HAVE_DCPMM_STORE */
   virtual AbstractBuffer* createBuffer(
 #ifdef HAVE_DCPMM
                                        BufferProperty bufProp,
@@ -102,6 +109,9 @@ class AbstractBufferMgr {
                                                const ChunkKey& keyPrefix) = 0;
 
   virtual bool isBufferOnDevice(const ChunkKey& key) = 0;
+#ifdef HAVE_DCPMM_STORE
+  virtual bool isBufferInPersistentMemory(const ChunkKey& key) = 0;
+#endif /* HAVE_DCPMM_STORE */
   virtual std::string printSlabs() = 0;
   virtual size_t getMaxSize() = 0;
   virtual size_t getInUseSize() = 0;

@@ -25,8 +25,20 @@ class MutableCachePersistentStorageMgr : public PersistentStorageMgr {
  public:
   MutableCachePersistentStorageMgr(
       const std::string& data_dir,
+#ifdef HAVE_DCPMM_STORE
+      const bool pmm_store,
+      const std::string& pmm_store_path,
+#endif /* HAVE_DCPMM_STORE */
       const size_t num_reader_threads,
       const File_Namespace::DiskCacheConfig& disk_cache_config);
+#ifdef HAVE_DCPMM_STORE
+  AbstractBuffer* createBuffer(
+    BufferProperty bufProp,
+    const ChunkKey& chunk_key,
+    const size_t maxRows,
+    const int sqlTypeSize,
+    const size_t page_size) override;
+#endif /* HAVE_DCPMM_STORE */
   AbstractBuffer* createBuffer(
 #ifdef HAVE_DCPMM
       BufferProperty bufProp,

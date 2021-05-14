@@ -42,6 +42,11 @@ namespace File_Namespace {
 class FileMgr;
 class CachingFileMgr;
 
+#ifdef HAVE_DCPMM_STORE
+// forward declaration
+struct PersistentBufferDescriptor;
+#endif /* HAVE_DCPMM_STORE */
+
 /**
  * @class   FileBuffer
  * @brief   Represents/provides access to contiguous data stored in the file system.
@@ -78,6 +83,10 @@ class FileBuffer : public AbstractBuffer {
              /* const size_t pageSize,*/ const ChunkKey& chunkKey,
              const std::vector<HeaderInfo>::const_iterator& headerStartIt,
              const std::vector<HeaderInfo>::const_iterator& headerEndIt);
+
+#ifdef HAVE_DCPMM_STORE
+  FileBuffer(FileMgr *fm, ChunkKey key, int8_t * pmmAddr, PersistentBufferDescriptor *p, bool existed);
+#endif /* HAVE_DCPMM_STORE */
 
   /// Destructor
   virtual ~FileBuffer() override;
@@ -123,6 +132,11 @@ class FileBuffer : public AbstractBuffer {
 
   /// Not implemented for FileMgr -- throws a runtime_error
   int8_t* getMemoryPtr() override {
+#ifdef HAVE_DCPMM_STORE
+    if (pmmMem_) {
+      return pmmMem_;
+    }
+#endif /* HAVE_DCPMM_STORE */
     LOG(FATAL) << "Operation not supported.";
     return nullptr;  // satisfy return-type warning
   }
@@ -156,6 +170,10 @@ class FileBuffer : public AbstractBuffer {
 
   inline size_t numMetadataPages() const { return metadataPages_.pageVersions.size(); };
 
+#ifdef HAVE_DCPMM_STORE
+  void constructPersistentBuffer(int8_t *addr, PersistentBufferDescriptor *p);
+#endif /* HAVE_DCPMM_STORE */
+
   bool isMissingPages() const;
   size_t numChunkPages() const;
   std::string dump() const;
@@ -178,6 +196,9 @@ class FileBuffer : public AbstractBuffer {
                    const int32_t epoch,
                    const bool writeMetadata = false);
   void writeMetadata(const int32_t epoch);
+#ifdef HAVE_DCPMM_STORE
+  void readMetadata(void);
+#endif /* HAVE_DCPMM_STORE */
   void readMetadata(const Page& page);
   void calcHeaderBuffer();
 
@@ -195,6 +216,10 @@ class FileBuffer : public AbstractBuffer {
   size_t pageSize_;
   size_t pageDataSize_;
   size_t reservedHeaderSize_;  // lets make this a constant now for simplicity - 128 bytes
+#ifdef HAVE_DCPMM_STORE
+  int8_t *pmmMem_;              // in DCPMM
+  PersistentBufferDescriptor *pmmBufferDescriptor_;
+#endif /* HAVE_DCPMM_STORE */
   ChunkKey chunkKey_;
 };
 

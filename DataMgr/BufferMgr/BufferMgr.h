@@ -134,6 +134,19 @@ class BufferMgr : public AbstractBufferMgr {  // implements
                                const size_t page_size = 0,
                                const size_t initial_size = 0) override;
 
+#ifdef HAVE_DCPMM_STORE
+  AbstractBuffer* createBuffer(BufferProperty bufProp,
+                               const ChunkKey& key,
+                               const size_t maxRows,
+                               const int sqlTypeSize,
+                               const size_t page_size
+                              ) override {
+                                AbstractBuffer *buffer = createBuffer(bufProp, key, page_size, maxRows * sqlTypeSize);
+                                buffer->setMaxRows(maxRows);
+			        return buffer;
+                              }
+#endif /* HAVE_DCPMM_STORE */
+
   /// Deletes the chunk with the specified key
   void deleteBuffer(const ChunkKey& key, const bool purge = true) override;
   void deleteBuffersWithPrefix(const ChunkKey& key_prefix,
@@ -146,6 +159,9 @@ class BufferMgr : public AbstractBufferMgr {  // implements
 #endif /* HAVE_DCPMM */
                             const ChunkKey& key, const size_t num_bytes = 0) override;
 
+#ifdef HAVE_DCPMM_STORE
+  bool isBufferInPersistentMemory(const ChunkKey& key) override { return false; }
+#endif /* HAVE_DCPMM_STORE */
   /**
    * @brief Puts the contents of d into the Buffer with ChunkKey key.
    * @param key - Unique identifier for a Chunk.

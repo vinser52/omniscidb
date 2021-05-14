@@ -81,6 +81,10 @@ class Chunk {
   void createChunkBuffer(DataMgr* data_mgr,
                          const ChunkKey& key,
                          const MemoryLevel mem_level,
+#ifdef HAVE_DCPMM_STORE
+                         const size_t maxRows,
+                         const int sqlTypeSize,
+#endif /* HAVE_DCPMM_STORE */
                          const int deviceId = 0,
                          const size_t page_size = 0);
 

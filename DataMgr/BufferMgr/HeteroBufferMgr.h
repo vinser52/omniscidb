@@ -42,6 +42,14 @@ public:
 
   ~HeteroBufferMgr() override;
 
+#ifdef HAVE_DCPMM_STORE
+  AbstractBuffer* createBuffer(BufferProperty bufProp,
+                               const ChunkKey& key,
+                               const size_t maxRows,
+                               const int sqlTypeSize,
+                               const size_t pageSize = 0) override;
+#endif /* HAVE_DCPMM_STORE */
+
   /// Creates a chunk with the specified key and page size.
   AbstractBuffer* createBuffer(
 #ifdef HAVE_DCPMM
@@ -75,6 +83,10 @@ public:
                                        const ChunkKey& keyPrefix) override;
 
   bool isBufferOnDevice(const ChunkKey& key) override;
+
+#ifdef HAVE_DCPMM_STORE
+  bool isBufferInPersistentMemory(const ChunkKey& key) override { return false; }
+#endif /* HAVE_DCPMM_STORE */
 
   std::string printSlabs() override { return "Not Implemented"; }
   virtual void clearSlabs();

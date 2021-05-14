@@ -44,6 +44,10 @@
 using namespace Data_Namespace;
 
 namespace File_Namespace {
+#ifdef HAVE_DCPMM_STORE
+struct PersistentBufferDescriptor;              // forward declaration
+#endif /* HAVE_DCPMM_STORE */
+
 class GlobalFileMgr;  // forward declaration
 /**
  * @type PageSizeFileMMap
@@ -179,6 +183,21 @@ class FileMgr : public AbstractBufferMgr {  // implements
                            const ChunkKey& key,
                            size_t pageSize = 0,
                            const size_t numBytes = 0) override;
+
+#ifdef HAVE_DCPMM_STORE
+  AbstractBuffer* createBuffer(BufferProperty bufProp,
+                               const ChunkKey& key,
+                               const size_t maxRows,
+                               const int sqlTypeSize,
+                               const size_t pageSize
+                              ) override {
+              mapd_unique_lock<mapd_shared_mutex> chunkIndexWriteLock(chunkIndexMutex_);
+              AbstractBuffer *buffer = createBufferUnlocked(key, pageSize, maxRows * sqlTypeSize);
+              buffer->setMaxRows(maxRows);
+			        return buffer;
+			      }
+  bool isBufferInPersistentMemory(const ChunkKey& key) override;
+#endif /* HAVE_DCPMM_STORE */
 
   bool isBufferOnDevice(const ChunkKey& key) override;
   /// Deletes the chunk with the specified key
@@ -380,6 +399,15 @@ class FileMgr : public AbstractBufferMgr {  // implements
   static void setNumPagesPerDataFile(size_t num_pages);
   static void setNumPagesPerMetadataFile(size_t num_pages);
 
+#ifdef HAVE_DCPMM_STORE
+  void constructPersistentBuffer(ChunkKey key, PersistentBufferDescriptor *p, int8_t *addr);
+  int8_t *reallocatePersistentBuffer(ChunkKey key, int8_t *addr, size_t numBytes, PersistentBufferDescriptor **desc);
+  int8_t *allocatePersistentBuffer(ChunkKey key, size_t numBytes, PersistentBufferDescriptor **desc);
+  void shrinkPersistentBuffer(PersistentBufferDescriptor *p, int8_t *addr);
+  bool isPersistentMemoryPresent(void);
+  size_t getPersistentBufferPageSize(void);
+#endif /* HAVE_DCPMM_STORE */
+
   static constexpr char LEGACY_EPOCH_FILENAME[] = "epoch";
   static constexpr char EPOCH_FILENAME[] = "epoch_metadata";
   static constexpr char DB_META_FILENAME[] = "dbmeta";
@@ -504,7 +532,12 @@ class FileMgr : public AbstractBufferMgr {  // implements
   void freePagesBeforeEpochUnlocked(const int32_t min_epoch,
                                     const ChunkKeyToChunkMap::iterator lower_bound,
                                     const ChunkKeyToChunkMap::iterator upper_bound);
-  FileBuffer* getOrCreateBuffer(const ChunkKey& key);
+  FileBuffer* getOrCreateBuffer(
+    const ChunkKey& key
+#ifdef HAVE_DCPMM_STORE
+    , AbstractBuffer* srcBuffer
+#endif /* HAVE_DCPMM_STORE */
+    );
   /**
    * @brief Determines file path, and if exists, runs file migration and opens and reads
    * epoch file

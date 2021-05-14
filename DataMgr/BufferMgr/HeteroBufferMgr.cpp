@@ -37,6 +37,18 @@ HeteroBufferMgr::~HeteroBufferMgr() {
   // clear() should be called from the derived class destructor
 }
 
+#ifdef HAVE_DCPMM_STORE
+AbstractBuffer* HeteroBufferMgr::createBuffer(BufferProperty bufProp,
+                                              const ChunkKey& key,
+                                              const size_t maxRows,
+                                              const int sqlTypeSize,
+                                              const size_t pageSize) {
+  AbstractBuffer *buffer = createBuffer(bufProp, key, pageSize, maxRows * sqlTypeSize);
+  buffer->setMaxRows(maxRows);
+  return buffer;
+}
+#endif /* HAVE_DCPMM_STORE */
+
 /// Throws a runtime_error if the Chunk already exists
 AbstractBuffer* HeteroBufferMgr::createBuffer(
 #ifdef HAVE_DCPMM

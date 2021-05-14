@@ -206,6 +206,9 @@ QueryRunner::QueryRunner(const char* db_path,
                                               mapd_params,
                                               std::move(cuda_mgr),
                                               false, "", // TODO: is it OK if we do not use actual PMem path???
+#ifdef HAVE_DCPMM_STORE
+                                              false, "",
+#endif /* HAVE_DCPMM_STORE */
                                               uses_gpus,
                                               reserved_gpu_mem,
                                               0,

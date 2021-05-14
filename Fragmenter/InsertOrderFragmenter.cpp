@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2020 OmniSci, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -476,6 +476,10 @@ void InsertOrderFragmenter::addColumns(const InsertData& insertDataStruct) {
             dataMgr_,
             chunkKey,
             defaultInsertLevel_,
+#ifdef HAVE_DCPMM_STORE
+            maxFragmentRows_,
+            colDesc->columnType.get_size(),
+#endif /* HAVE_DCPMM_STORE */
             fragmentInfo->deviceIds[static_cast<int>(defaultInsertLevel_)]);
         chunk.initEncoder();
 
@@ -738,6 +742,10 @@ FragmentInfo* InsertOrderFragmenter::createNewFragment(
         dataMgr_,
         chunkKey,
         memoryLevel,
+#ifdef HAVE_DCPMM_STORE
+        maxFragmentRows_,
+        colMapIt->second.getColumnDesc()->columnType.get_size(),
+#endif /* HAVE_DCPMM_STORE */
         newFragmentInfo->deviceIds[static_cast<int>(memoryLevel)],
         pageSize_);
     colMapIt->second.initEncoder();

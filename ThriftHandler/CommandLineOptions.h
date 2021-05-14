@@ -53,6 +53,10 @@ class CommandLineOptions {
   std::string encryption_key_store_path = {};
   std::string pmm_path = {""};  // DCPMM for cold columns
   bool pmm = false;
+#ifdef HAVE_DCPMM_STORE
+  std::string pmm_store_path = {""};    // DCPMM for storage
+  bool pmm_store = false;
+#endif /* HAVE_DCPMM_STORE */
   bool verbose_logging = false;
   bool jit_debug = false;
   bool intel_jit_profile = false;

@@ -57,6 +57,8 @@ static void loadGeo(std::string base_path) {
   ddl_utils::FilePathWhitelist::initialize(base_path, "[\"/\"]", "[\"/\"]");
 
   // Based on default values observed from starting up an OmniSci DB server.
+  const bool pmm{false};
+  const std::string pmm_path{""};
   const bool allow_multifrag{true};
   const bool jit_debug{false};
   const bool intel_jit_profile{false};
@@ -90,6 +92,8 @@ static void loadGeo(std::string base_path) {
   auto db_handler = std::make_unique<DBHandler>(db_leaves,
                                                 string_leaves,
                                                 base_path,
+                                                pmm,
+                                                pmm_path,
                                                 allow_multifrag,
                                                 jit_debug,
                                                 intel_jit_profile,

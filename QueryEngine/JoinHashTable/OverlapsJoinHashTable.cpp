@@ -46,6 +46,9 @@ std::shared_ptr<OverlapsJoinHashTable> OverlapsJoinHashTable::getInstance(
     const Data_Namespace::MemoryLevel memory_level,
     const JoinType join_type,
     const int device_count,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     ColumnCacheMap& column_cache,
     Executor* executor,
     const RegisteredQueryHint& query_hint) {
@@ -103,7 +106,11 @@ std::shared_ptr<OverlapsJoinHashTable> OverlapsJoinHashTable::getInstance(
     join_hash_table->registerQueryHint(query_hint);
   }
   try {
-    join_hash_table->reify(layout);
+    join_hash_table->reify(
+#ifdef HAVE_DCPMM
+      eo,
+#endif /* HAVE_DCPMM */
+      layout);
   } catch (const HashJoinFail& e) {
     throw HashJoinFail(std::string("Could not build a 1-to-1 correspondence for columns "
                                    "involved in overlaps join | ") +
@@ -512,7 +519,11 @@ std::ostream& operator<<(std::ostream& os, const BucketSizeTuner& tuner) {
 
 }  // namespace
 
-void OverlapsJoinHashTable::reifyWithLayout(const HashType layout) {
+void OverlapsJoinHashTable::reifyWithLayout(
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
+    const HashType layout) {
   auto timer = DEBUG_TIMER(__func__);
   CHECK(layoutRequiresAdditionalBuffers(layout));
   const auto& query_info =
@@ -589,6 +600,9 @@ void OverlapsJoinHashTable::reifyWithLayout(const HashType layout) {
     const auto columns_for_device =
         fetchColumnsForDevice(fragments,
                               device_id,
+#ifdef HAVE_DCPMM
+                              eo,
+#endif /* HAVE_DCPMM */
                               memory_level_ == Data_Namespace::MemoryLevel::GPU_LEVEL
                                   ? dev_buff_owners[device_id].get()
                                   : nullptr);
@@ -817,6 +831,9 @@ size_t OverlapsJoinHashTable::calculateHashTableSize(size_t number_of_dimensions
 ColumnsForDevice OverlapsJoinHashTable::fetchColumnsForDevice(
     const std::vector<Fragmenter_Namespace::FragmentInfo>& fragments,
     const int device_id,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     DeviceAllocator* dev_buff_owner) {
   const auto& catalog = *executor_->getCatalog();
   const auto effective_memory_level = getEffectiveMemoryLevel(inner_outer_pairs_);
@@ -836,6 +853,9 @@ ColumnsForDevice OverlapsJoinHashTable::fetchColumnsForDevice(
                                               fragments,
                                               effective_memory_level,
                                               device_id,
+#ifdef HAVE_DCPMM
+					                                    eo,
+#endif /* HAVE_DCPMM */
                                               chunks_owner,
                                               dev_buff_owner,
                                               malloc_owner,
@@ -1071,7 +1091,11 @@ size_t OverlapsJoinHashTable::getKeyComponentCount() const {
   return inverse_bucket_sizes_for_dimension_.size();
 }
 
-void OverlapsJoinHashTable::reify(const HashType preferred_layout) {
+void OverlapsJoinHashTable::reify(
+#ifdef HAVE_DCPMM
+  const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
+  const HashType preferred_layout) {
   auto timer = DEBUG_TIMER(__func__);
   CHECK_LT(0, device_count_);
   const auto composite_key_info =
@@ -1088,7 +1112,11 @@ void OverlapsJoinHashTable::reify(const HashType preferred_layout) {
     layout = HashType::OneToMany;
   }
   try {
-    reifyWithLayout(layout);
+    reifyWithLayout(
+#ifdef HAVE_DCPMM
+      eo,
+#endif /* HAVE_DCPMM */
+      layout);
     return;
   } catch (const std::exception& e) {
     VLOG(1) << "Caught exception while building overlaps baseline hash table: "

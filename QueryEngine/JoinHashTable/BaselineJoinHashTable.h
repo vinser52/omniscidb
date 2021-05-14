@@ -77,6 +77,9 @@ class BaselineJoinHashTable : public HashJoin {
       const JoinType join_type,
       const HashType preferred_hash_type,
       const int device_count,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       ColumnCacheMap& column_cache,
       Executor* executor);
 
@@ -149,11 +152,18 @@ class BaselineJoinHashTable : public HashJoin {
 
   static int getInnerTableId(const std::vector<InnerOuter>& inner_outer_pairs);
 
-  virtual void reifyWithLayout(const HashType layout);
+  virtual void reifyWithLayout(
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
+    const HashType layout);
 
   virtual ColumnsForDevice fetchColumnsForDevice(
       const std::vector<Fragmenter_Namespace::FragmentInfo>& fragments,
       const int device_id,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       DeviceAllocator* dev_buff_owner);
 
   virtual std::pair<size_t, size_t> approximateTupleCount(
@@ -170,7 +180,11 @@ class BaselineJoinHashTable : public HashJoin {
   Data_Namespace::MemoryLevel getEffectiveMemoryLevel(
       const std::vector<InnerOuter>& inner_outer_pairs) const;
 
-  void reify(const HashType preferred_layout);
+  void reify(
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
+    const HashType preferred_layout);
 
   virtual void reifyForDevice(const ColumnsForDevice& columns_for_device,
                               const HashType layout,

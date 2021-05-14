@@ -566,6 +566,20 @@ class DBHandler : public OmniSciIf {
       const std::map<std::string, std::string>& device_ir_map) override;
 
   // end of sync block for HAHandler and mapd.thrift
+// TODO: we need to add these methods because omnisci.thrift defines it.
+//       did not find the way to add methods only if HAVE_DCPMM is ON.
+// #ifdef HAVE_DCPMM
+  bool heat_column(const TSessionId& session,
+                   const std::string& table_name,
+                   const std::string& column_name) override;
+  bool cool_column(const TSessionId& session,
+                   const std::string& table_name,
+                   const std::string& column_name) override;
+  void start_profiling(const TSessionId& session) override;
+  void stop_profiling(const TSessionId& session) override;
+  int64_t estimate_dram_size(const TSessionId& session,
+                             const int32_t perf_bar) override;
+// #endif /* HAVE_DCPMM */
 
   void shutdown();
   void emergency_shutdown();
@@ -751,7 +765,11 @@ class DBHandler : public OmniSciIf {
       const bool just_validate,
       const bool find_push_down_candidates,
       const ExplainInfo& explain_info,
+#ifdef HAVE_DCPMM
+      const std::optional<size_t> executor_index = std::nullopt);
+#else /* HAVE_DCPMM */
       const std::optional<size_t> executor_index = std::nullopt) const;
+#endif /* HAVE_DCPMM */
 
   void execute_rel_alg_with_filter_push_down(
       ExecutionResult& _return,
@@ -938,6 +956,9 @@ class DBHandler : public OmniSciIf {
   const std::string& udf_filename_;
   const std::string& clang_path_;
   const std::vector<std::string>& clang_options_;
+#ifdef HAVE_DCPMM
+  std::map<unsigned long, long> query_time;
+#endif /* HAVE_DCPMM */
 
   struct GeoCopyFromState {
     std::string geo_copy_from_table;

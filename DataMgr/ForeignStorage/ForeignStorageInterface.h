@@ -123,11 +123,19 @@ class ForeignStorageBufferMgr : public Data_Namespace::AbstractBufferMgr {
 
   void checkpoint() override;
 
-  Data_Namespace::AbstractBuffer* createBuffer(const ChunkKey& key,
+  Data_Namespace::AbstractBuffer* createBuffer(
+#ifdef HAVE_DCPMM
+                                               BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                               const ChunkKey& key,
                                                const size_t pageSize = 0,
                                                const size_t initialSize = 0) override;
 
-  Data_Namespace::AbstractBuffer* getBuffer(const ChunkKey& key,
+  Data_Namespace::AbstractBuffer* getBuffer(
+#ifdef HAVE_DCPMM
+                                            BufferProperty bufProp,
+#endif /* HAVE_DCOMM */
+                                            const ChunkKey& key,
                                             const size_t numBytes = 0) override;
 
   void fetchBuffer(const ChunkKey& key,

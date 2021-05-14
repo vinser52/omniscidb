@@ -663,6 +663,9 @@ class Executor {
   FetchResult fetchChunks(const ColumnFetcher&,
                           const RelAlgExecutionUnit& ra_exe_unit,
                           const int device_id,
+#ifdef HAVE_DCPMM
+                          const unsigned long query_id,
+#endif /* HAVE_DCPMM */
                           const Data_Namespace::MemoryLevel,
                           const std::map<int, const TableFragments*>&,
                           const FragmentsList& selected_fragments,
@@ -676,6 +679,9 @@ class Executor {
   FetchResult fetchUnionChunks(const ColumnFetcher&,
                                const RelAlgExecutionUnit& ra_exe_unit,
                                const int device_id,
+#ifdef HAVE_DCPMM
+                               const unsigned long query_id,
+#endif /* HAVE_DCPMM */
                                const Data_Namespace::MemoryLevel,
                                const std::map<int, const TableFragments*>&,
                                const FragmentsList& selected_fragments,
@@ -844,6 +850,9 @@ class Executor {
       const JoinCondition& current_level_join_conditions,
       RelAlgExecutionUnit& ra_exe_unit,
       const CompilationOptions& co,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       const std::vector<InputTableInfo>& query_infos,
       ColumnCacheMap& column_cache,
       std::vector<std::string>& fail_reasons);
@@ -887,6 +896,9 @@ class Executor {
       const std::vector<InputTableInfo>& query_infos,
       const MemoryLevel memory_level,
       const JoinType join_type,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       const HashType preferred_hash_type,
       ColumnCacheMap& column_cache,
       const RegisteredQueryHint& query_hint);

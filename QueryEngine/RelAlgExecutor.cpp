@@ -137,6 +137,9 @@ void prepare_string_dictionaries(const RelAlgNode& ra_node,
                                           chunk_key,
                                           Data_Namespace::CPU_LEVEL,
                                           0,
+#ifdef HAVE_DCPMM
+                                          0,
+#endif /* HAVE_DCPMM */
                                           0,
                                           0);
           }
@@ -583,6 +586,9 @@ QueryStepExecutionResult RelAlgExecutor::executeRelAlgQuerySingleStep(
             eo.allow_runtime_query_interrupt,
             eo.running_query_interrupt_freq,
             eo.pending_query_interrupt_freq,
+#ifdef HAVE_DCPMM
+            eo.query_id,
+#endif /* HAVE_DCPMM */
             eo.executor_type,
         };
         // Use subseq to avoid clearing existing temporary tables
@@ -791,6 +797,9 @@ void RelAlgExecutor::executeRelAlgStep(const RaExecutionSequence& seq,
       eo.allow_runtime_query_interrupt,
       eo.running_query_interrupt_freq,
       eo.pending_query_interrupt_freq,
+#ifdef HAVE_DCPMM
+      eo.query_id,
+#endif /* HAVE_DCPMM */
       eo.executor_type,
       step_idx == 0 ? eo.outer_fragment_indices : std::vector<size_t>()};
 
@@ -2002,6 +2011,9 @@ void RelAlgExecutor::computeWindow(const RelAlgExecutionUnit& ra_exe_unit,
                                                ra_exe_unit,
                                                query_infos,
                                                co,
+#ifdef HAVE_DCPMM
+                                               eo,
+#endif /* HAVE_DCPMM */
                                                column_cache_map,
                                                executor_->getRowSetMemoryOwner());
     context->compute();
@@ -2016,6 +2028,9 @@ std::unique_ptr<WindowFunctionContext> RelAlgExecutor::createWindowFunctionConte
     const RelAlgExecutionUnit& ra_exe_unit,
     const std::vector<InputTableInfo>& query_infos,
     const CompilationOptions& co,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     ColumnCacheMap& column_cache_map,
     std::shared_ptr<RowSetMemoryOwner> row_set_mem_owner) {
   const auto memory_level = co.device_type == ExecutorDeviceType::GPU
@@ -2026,6 +2041,9 @@ std::unique_ptr<WindowFunctionContext> RelAlgExecutor::createWindowFunctionConte
                                             query_infos,
                                             memory_level,
                                             JoinType::INVALID,  // for window function
+#ifdef HAVE_DCPMM
+                                            eo,
+#endif /* HAVE_DCPMM */
                                             HashType::OneToMany,
                                             column_cache_map,
                                             ra_exe_unit.query_hint);
@@ -2057,6 +2075,9 @@ std::unique_ptr<WindowFunctionContext> RelAlgExecutor::createWindowFunctionConte
                                             0,
                                             nullptr,
                                             /*thread_idx=*/0,
+#ifdef HAVE_DCPMM
+                                            eo.query_id,
+#endif /* HAVE_DCPMM */
                                             chunks_owner,
                                             column_cache_map);
     CHECK_EQ(join_col_elem_count, elem_count);
@@ -2690,6 +2711,9 @@ ExecutionResult RelAlgExecutor::executeSort(const RelSort* sort,
         eo.allow_runtime_query_interrupt,
         eo.running_query_interrupt_freq,
         eo.pending_query_interrupt_freq,
+#ifdef HAVE_DCPMM
+        eo.query_id,
+#endif /* HAVE_DCPMM */
         eo.executor_type,
     };
 
@@ -3252,6 +3276,9 @@ ExecutionResult RelAlgExecutor::handleOutOfMemoryRetry(
                                    eo.allow_runtime_query_interrupt,
                                    eo.running_query_interrupt_freq,
                                    eo.pending_query_interrupt_freq,
+#ifdef HAVE_DCPMM
+                                   eo.query_id,
+#endif /* HAVE_DCPMM */
                                    eo.executor_type,
                                    eo.outer_fragment_indices};
 

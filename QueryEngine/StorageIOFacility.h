@@ -266,6 +266,9 @@ class StorageIOFacility {
                                                chunk_key,
                                                Data_Namespace::MemoryLevel::CPU_LEVEL,
                                                0,
+#ifdef HAVE_DCPMM
+                                               0, //TODO: get the real query_id
+#endif /* HAVE_DCPMM */
                                                chunk_metadata->second->numBytes,
                                                chunk_metadata->second->numElements);
         CHECK(chunk);
@@ -479,6 +482,9 @@ class StorageIOFacility {
                                                chunk_key,
                                                Data_Namespace::MemoryLevel::CPU_LEVEL,
                                                0,
+#ifdef HAVE_DCPMM
+                                               0, //TODO: get the real query_id
+#endif /* HAVE_DCPMM */
                                                chunk_metadata->second->numBytes,
                                                chunk_metadata->second->numElements);
         CHECK(chunk);

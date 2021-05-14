@@ -26,10 +26,17 @@ MutableCachePersistentStorageMgr::MutableCachePersistentStorageMgr(
 }
 
 AbstractBuffer* MutableCachePersistentStorageMgr::createBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
     const ChunkKey& chunk_key,
     const size_t page_size,
     const size_t initial_size) {
-  auto buf = PersistentStorageMgr::createBuffer(chunk_key, page_size, initial_size);
+  auto buf = PersistentStorageMgr::createBuffer(
+#ifdef HAVE_DCPMM
+                                                bufProp,
+#endif /* HAVE_DCPMM */
+                                                chunk_key, page_size, initial_size);
   if (isChunkPrefixCacheable(chunk_key)) {
     cached_chunk_keys_.emplace(chunk_key);
   }
@@ -69,7 +76,11 @@ void MutableCachePersistentStorageMgr::fetchBuffer(const ChunkKey& chunk_key,
   // without the file_mgr being initialized, so we need to check if the file_mgr exists.
   auto [db, tb] = get_table_prefix(chunk_key);
   auto file_mgr = global_file_mgr_->findFileMgr(db, tb);
-  if (file_mgr && file_mgr->getBuffer(chunk_key)->isDirty()) {
+  if (file_mgr && file_mgr->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    chunk_key)->isDirty()) {
     // It is possible for the fragmenter to write data to a FileBuffer and then attempt to
     // fetch that bufer without checkpointing.  In that case the cache will not have been
     // updated and the cached buffer will be out of date, so we need to fetch the storage
@@ -91,7 +102,12 @@ AbstractBuffer* MutableCachePersistentStorageMgr::putBuffer(const ChunkKey& chun
 void MutableCachePersistentStorageMgr::checkpoint() {
   std::set<File_Namespace::TablePair> tables_to_checkpoint;
   for (auto& key : cached_chunk_keys_) {
-    if (global_file_mgr_->getBuffer(key)->isDirty()) {
+    const auto buf = global_file_mgr_->getBuffer(
+#ifdef HAVE_DCPMM
+                                                 BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                                 key);
+    if (buf->isDirty()) {
       tables_to_checkpoint.emplace(get_table_prefix(key));
       foreign_storage::ForeignStorageBuffer temp_buf;
       global_file_mgr_->fetchBuffer(key, &temp_buf, 0);
@@ -113,7 +129,12 @@ void MutableCachePersistentStorageMgr::checkpoint(const int db_id, const int tb_
   for (auto&& chunk_key_it = cached_chunk_keys_.lower_bound(chunk_prefix);
        chunk_key_it != end_it;
        ++chunk_key_it) {
-    if (global_file_mgr_->getBuffer(*chunk_key_it)->isDirty()) {
+    const auto buf = global_file_mgr_->getBuffer(
+#ifdef HAVE_DCPMM
+                                                 BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                                 *chunk_key_it);
+    if (buf->isDirty()) {
       need_checkpoint = true;
       foreign_storage::ForeignStorageBuffer temp_buf;
       global_file_mgr_->fetchBuffer(*chunk_key_it, &temp_buf, 0);

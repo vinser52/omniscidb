@@ -157,7 +157,11 @@ TEST_F(CachingFileMgrTest, InitializeEmpty) {
 TEST_F(CachingFileMgrTest, EpochSingleTable) {
   auto cfm = initializeCFM();
   // Create a buffer and add some values
-  auto buf = cfm->createBuffer(key_);
+  auto buf = cfm->createBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    key_);
   assert_dir_contains(std::string(test_path) + "/table_1_1", {"epoch_metadata"});
   ASSERT_EQ(cfm->epoch(1, 1), 1);
   buf->append(small_buffer_.data(), small_buffer_size_);
@@ -169,8 +173,16 @@ TEST_F(CachingFileMgrTest, EpochSingleTable) {
 TEST_F(CachingFileMgrTest, EpochMultiTable) {
   auto cfm = initializeCFM();
   // Create a buffer and add some values
-  auto buf1 = cfm->createBuffer(key_);
-  auto buf2 = cfm->createBuffer({1, 2, 1, 1});
+  auto buf1 = cfm->createBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    key_);
+  auto buf2 = cfm->createBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 2, 1, 1});
   buf1->append(small_buffer_.data(), small_buffer_size_);
   buf2->append(small_buffer_.data(), small_buffer_size_);
   cfm->checkpoint(1, 1);
@@ -189,13 +201,21 @@ TEST_F(CachingFileMgrTest, InitializeFromCheckpointedData) {
   std::vector<int8_t> read_buffer(4);
   {
     auto cfm = initializeCFM();
-    auto buf = cfm->createBuffer(key_);
+    auto buf = cfm->createBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      key_);
     buf->append(small_buffer_.data(), small_buffer_size_);
     cfm->checkpoint(1, 1);
   }
   auto cfm = initializeCFM();
   ASSERT_EQ(cfm->epoch(1, 1), 2);
-  auto buffer = cfm->getBuffer(key_);
+  auto buffer = cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    key_);
   ASSERT_EQ(buffer->pageCount(), 1U);
   ASSERT_EQ(buffer->numMetadataPages(), 1U);
   ASSERT_EQ(buffer->size(), 4U);
@@ -207,7 +227,11 @@ TEST_F(CachingFileMgrTest, InitializeFromUncheckpointedData) {
   std::vector<int8_t> read_buffer(4);
   {
     auto cfm = initializeCFM();
-    auto buf = cfm->createBuffer(key_);
+    auto buf = cfm->createBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      key_);
     buf->append(small_buffer_.data(), small_buffer_size_);
   }
   auto cfm = initializeCFM();
@@ -223,14 +247,22 @@ TEST_F(CachingFileMgrTest, InitializeFromPartiallyCheckpointedData) {
   std::vector<int8_t> read_buffer(4);
   {
     auto cfm = initializeCFM();
-    auto buf = cfm->createBuffer(key_);
+    auto buf = cfm->createBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      key_);
     buf->append(small_buffer_.data(), small_buffer_size_);
     cfm->checkpoint(1, 1);
     buf->append(overwrite_buffer.data(), 4);
   }
   auto cfm = initializeCFM();
   ASSERT_EQ(cfm->epoch(1, 1), 2);
-  auto buffer = cfm->getBuffer(key_);
+  auto buffer = cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    key_);
   ASSERT_EQ(buffer->pageCount(), 1U);
   ASSERT_EQ(buffer->numMetadataPages(), 1U);
   ASSERT_EQ(buffer->size(), 4U);
@@ -241,11 +273,19 @@ TEST_F(CachingFileMgrTest, InitializeFromPartiallyCheckpointedData) {
 TEST_F(CachingFileMgrTest, InitializeFromPartiallyFreedDataLastPage) {
   {
     auto temp_cfm = initializeCFM(2);
-    auto buffer = temp_cfm->getBuffer(key_);
+    auto buffer = temp_cfm->getBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      key_);
     buffer->freePage(buffer->getMultiPage().back().current().page);
   }
   auto cfm = initializeCFM();
-  auto buffer = cfm->getBuffer(key_);
+  auto buffer = cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    key_);
   ASSERT_EQ(buffer->size(), (page_data_size_)*2);
   ASSERT_EQ(buffer->pageCount(), 0U);
   ASSERT_EQ(buffer->numMetadataPages(), 1U);
@@ -254,11 +294,19 @@ TEST_F(CachingFileMgrTest, InitializeFromPartiallyFreedDataLastPage) {
 TEST_F(CachingFileMgrTest, InitializeFromPartiallyFreedDataFirstPage) {
   {
     auto temp_cfm = initializeCFM(2);
-    auto buffer = temp_cfm->getBuffer(key_);
+    auto buffer = temp_cfm->getBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      key_);
     buffer->freePage(buffer->getMultiPage().front().current().page);
   }
   auto cfm = initializeCFM();
-  auto buffer = cfm->getBuffer(key_);
+  auto buffer = cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    key_);
   ASSERT_EQ(buffer->size(), (page_data_size_)*2);
   ASSERT_EQ(buffer->pageCount(), 0U);
   ASSERT_EQ(buffer->numMetadataPages(), 1U);
@@ -267,7 +315,11 @@ TEST_F(CachingFileMgrTest, InitializeFromPartiallyFreedDataFirstPage) {
 TEST_F(CachingFileMgrTest, InitializeFromFreedMetadata) {
   {
     auto temp_cfm = initializeCFM(2);
-    auto buffer = temp_cfm->getBuffer(key_);
+    auto buffer = temp_cfm->getBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      key_);
     buffer->freePage(buffer->getMetadataPage().current().page);
   }
   auto cfm = initializeCFM();
@@ -278,7 +330,11 @@ TEST_F(CachingFileMgrTest, InitializeFromFreedMetadata) {
 // Tests to make sure we only have one version of data in the CFM
 TEST_F(CachingFileMgrTest, SingleVersion_SinglePage) {
   auto cfm = initializeCFM();
-  auto buf = cfm->createBuffer(key_);
+  auto buf = cfm->createBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    key_);
   buf->append(full_page_buffer_.data(), page_data_size_);
   cfm->checkpoint(db_, tb_);
   validatePageInfo(buf, 1, 1, 1);
@@ -286,7 +342,11 @@ TEST_F(CachingFileMgrTest, SingleVersion_SinglePage) {
 
 TEST_F(CachingFileMgrTest, SingleVersion_TwoPages_SingleCheckpoint) {
   auto cfm = initializeCFM();
-  auto buf = cfm->createBuffer(key_);
+  auto buf = cfm->createBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    key_);
   buf->append(full_page_buffer_.data(), page_data_size_);
   buf->append(full_page_buffer_.data(), page_data_size_);
   cfm->checkpoint(db_, tb_);
@@ -295,7 +355,11 @@ TEST_F(CachingFileMgrTest, SingleVersion_TwoPages_SingleCheckpoint) {
 
 TEST_F(CachingFileMgrTest, SingleVersion_TwoPages_TwoCheckpoints) {
   auto cfm = initializeCFM();
-  auto buf = cfm->createBuffer(key_);
+  auto buf = cfm->createBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    key_);
   buf->append(full_page_buffer_.data(), page_data_size_);
   cfm->checkpoint(db_, tb_);
   buf->append(full_page_buffer_.data(), page_data_size_);
@@ -311,9 +375,21 @@ TEST_F(ChunkEvictionTest, SameTable) {
   writePages(*cfm, {1, 1, 1, 1}, 128);
   writePages(*cfm, {1, 1, 1, 2}, 128);
   writePages(*cfm, {1, 1, 1, 3}, 128);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 1})->pageCount(), 0U);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 2})->pageCount(), 128U);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 3})->pageCount(), 128U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 1})->pageCount(), 0U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 2})->pageCount(), 128U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 3})->pageCount(), 128U);
 }
 
 TEST_F(ChunkEvictionTest, LargeChunk) {
@@ -322,16 +398,32 @@ TEST_F(ChunkEvictionTest, LargeChunk) {
   writePages(*cfm, {1, 1, 1, 2}, 128);
   writePages(*cfm, {1, 1, 1, 3}, 256);
   writePages(*cfm, {1, 1, 1, 1}, 64);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 1})->pageCount(), 64U);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 2})->pageCount(), 0U);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 3})->pageCount(), 0U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 1})->pageCount(), 64U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 2})->pageCount(), 0U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 3})->pageCount(), 0U);
 }
 
 TEST_F(ChunkEvictionTest, ChunkReusesPagesIfOverwritten) {
   auto cfm = initializeCFM();
   writePages(*cfm, {1, 1, 1, 1}, 256);
   writePages(*cfm, {1, 1, 1, 1}, 256, 64);
-  auto buf = cfm->getBuffer({1, 1, 1, 1});
+  auto buf = cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 1});
   ASSERT_EQ(buf->pageCount(), 256U);
   std::vector<int8_t> vec(4);
   buf->read(vec.data(), 4);
@@ -343,23 +435,59 @@ TEST_F(ChunkEvictionTest, MultipleTables) {
   writePages(*cfm, {1, 1, 1, 1}, 128);
   writePages(*cfm, {1, 2, 1, 1}, 128);
   writePages(*cfm, {1, 1, 1, 2}, 128);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 1})->pageCount(), 0U);
-  ASSERT_EQ(cfm->getBuffer({1, 2, 1, 1})->pageCount(), 128U);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 2})->pageCount(), 128U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 1})->pageCount(), 0U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 2, 1, 1})->pageCount(), 128U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 2})->pageCount(), 128U);
 }
 
 TEST_F(ChunkEvictionTest, MetadataOnlyChunkInQueue) {
   auto cfm = initializeCFM();
-  cfm->createBuffer({1, 1, 1, 1});  // No chunk data
+  cfm->createBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 1});  // No chunk data
   writePages(*cfm, {1, 1, 1, 2}, 256);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 1})->pageCount(), 0U);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 2})->pageCount(), 256U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 1})->pageCount(), 0U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 2})->pageCount(), 256U);
   // If we don't handle empty chunks correctly, i.e. skip them, then we will crash on this
   // line as the cache tries to evict a chunk with no data.
   writePages(*cfm, {1, 1, 1, 3}, 1);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 1})->pageCount(), 0U);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 2})->pageCount(), 0U);
-  ASSERT_EQ(cfm->getBuffer({1, 1, 1, 3})->pageCount(), 1U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 1})->pageCount(), 0U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 2})->pageCount(), 0U);
+  ASSERT_EQ(cfm->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 3})->pageCount(), 1U);
 }
 
 // Test how metadata is evicted - metadata is evicted on the table-level.

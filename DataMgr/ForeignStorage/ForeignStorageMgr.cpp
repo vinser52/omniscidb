@@ -27,7 +27,11 @@ extern bool g_enable_s3_fsi;
 namespace foreign_storage {
 ForeignStorageMgr::ForeignStorageMgr() : AbstractBufferMgr(0), data_wrapper_map_({}) {}
 
-AbstractBuffer* ForeignStorageMgr::getBuffer(const ChunkKey& chunk_key,
+AbstractBuffer* ForeignStorageMgr::getBuffer(
+#ifdef HAVE_DCPMM
+                                             BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                             const ChunkKey& chunk_key,
                                              const size_t num_bytes) {
   UNREACHABLE();
   return nullptr;  // Added to avoid "no return statement" compiler warning
@@ -282,7 +286,11 @@ size_t ForeignStorageMgr::getNumChunks() {
   return 0;  // Added to avoid "no return statement" compiler warning
 }
 
-AbstractBuffer* ForeignStorageMgr::createBuffer(const ChunkKey& chunk_key,
+AbstractBuffer* ForeignStorageMgr::createBuffer(
+#ifdef HAVE_DCPMM
+                                                BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                                const ChunkKey& chunk_key,
                                                 const size_t page_size,
                                                 const size_t initial_size) {
   UNREACHABLE();

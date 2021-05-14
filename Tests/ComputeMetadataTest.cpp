@@ -1320,10 +1320,18 @@ class OpportunisticVacuumingTest : public OptimizeTableVacuumTest {
     ChunkKey chunk_key{catalog.getDatabaseId(), td->tableId, cd->columnId, fragment_id};
     if (cd->columnType.is_varlen_indeed()) {
       chunk_key.emplace_back(2);
-      chunk.setIndexBuffer(data_mgr.getChunkBuffer(chunk_key, MemoryLevel::DISK_LEVEL));
+      chunk.setIndexBuffer(data_mgr.getChunkBuffer(
+#ifdef HAVE_DCPMM
+                                                   BufferDescriptor::defaults(),
+#endif /* HAVE_DCPMM */
+                                                   chunk_key, MemoryLevel::DISK_LEVEL));
       chunk_key.back() = 1;
     }
-    chunk.setBuffer(data_mgr.getChunkBuffer(chunk_key, MemoryLevel::DISK_LEVEL));
+    chunk.setBuffer(data_mgr.getChunkBuffer(
+#ifdef HAVE_DCPMM
+                                            BufferDescriptor::defaults(),
+#endif /* HAVE_DCPMM */
+                                            chunk_key, MemoryLevel::DISK_LEVEL));
     CHECK(chunk.getBuffer()->hasEncoder());
     std::shared_ptr<ChunkMetadata> chunk_metadata = std::make_shared<ChunkMetadata>();
     chunk.getBuffer()->getEncoder()->getMetadata(chunk_metadata);

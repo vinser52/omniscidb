@@ -130,19 +130,35 @@ void ForeignStorageCache::cacheMetadataVec(const ChunkMetadataVector& metadata_v
     }
     bool chunk_in_cache = false;
     if (!caching_file_mgr_->isBufferOnDevice(chunk_key)) {
-      buf = caching_file_mgr_->createBuffer(chunk_key);
+      buf = caching_file_mgr_->createBuffer(
+#ifdef HAVE_DCPMM
+                                            BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                            chunk_key);
 
       if (!index_chunk_key.empty()) {
         CHECK(!caching_file_mgr_->isBufferOnDevice(index_chunk_key));
-        index_buffer = caching_file_mgr_->createBuffer(index_chunk_key);
+        index_buffer = caching_file_mgr_->createBuffer(
+#ifdef HAVE_DCPMM
+                                                       BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                                       index_chunk_key);
         CHECK(index_buffer);
       }
     } else {
-      buf = caching_file_mgr_->getBuffer(chunk_key);
+      buf = caching_file_mgr_->getBuffer(
+#ifdef HAVE_DCPMM
+                                         BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                         chunk_key);
 
       if (!index_chunk_key.empty()) {
         CHECK(caching_file_mgr_->isBufferOnDevice(index_chunk_key));
-        index_buffer = caching_file_mgr_->getBuffer(index_chunk_key);
+        index_buffer = caching_file_mgr_->getBuffer(
+#ifdef HAVE_DCPMM
+                                                    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                                    index_chunk_key);
         CHECK(index_buffer);
       }
 
@@ -210,7 +226,11 @@ ChunkToBufferMap ForeignStorageCache::getChunkBuffersForCaching(
   ChunkToBufferMap chunk_buffer_map;
   for (const auto& chunk_key : chunk_keys) {
     CHECK(caching_file_mgr_->isBufferOnDevice(chunk_key));
-    chunk_buffer_map[chunk_key] = caching_file_mgr_->getBuffer(chunk_key);
+    chunk_buffer_map[chunk_key] = caching_file_mgr_->getBuffer(
+#ifdef HAVE_DCPMM
+                                                               BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                                               chunk_key);
     auto file_buf =
         dynamic_cast<File_Namespace::FileBuffer*>(chunk_buffer_map[chunk_key]);
     CHECK(file_buf);
@@ -272,10 +292,18 @@ AbstractBuffer* ForeignStorageCache::getChunkBufferForPrecaching(
     bool is_new_buffer) {
   if (!is_new_buffer) {
     CHECK(caching_file_mgr_->isBufferOnDevice(chunk_key));
-    return caching_file_mgr_->getBuffer(chunk_key);
+    return caching_file_mgr_->getBuffer(
+#ifdef HAVE_DCPMM
+                                        BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                        chunk_key);
   } else {
     CHECK(!caching_file_mgr_->isBufferOnDevice(chunk_key));
-    return caching_file_mgr_->createBuffer(chunk_key);
+    return caching_file_mgr_->createBuffer(
+#ifdef HAVE_DCPMM
+                                           BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                           chunk_key);
   }
 }
 

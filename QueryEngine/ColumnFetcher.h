@@ -59,6 +59,9 @@ class ColumnFetcher {
       const int device_id,
       DeviceAllocator* device_allocator,
       const size_t thread_idx,
+#ifdef HAVE_DCPMM
+      const unsigned long query_id,
+#endif /* HAVE_DCPMM */
       std::vector<std::shared_ptr<Chunk_NS::Chunk>>& chunks_owner,
       ColumnCacheMap& column_cache);
 
@@ -69,6 +72,9 @@ class ColumnFetcher {
       const std::vector<Fragmenter_Namespace::FragmentInfo>& fragments,
       const Data_Namespace::MemoryLevel effective_mem_lvl,
       const int device_id,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       DeviceAllocator* device_allocator,
       const size_t thread_idx,
       std::vector<std::shared_ptr<Chunk_NS::Chunk>>& chunks_owner,
@@ -83,6 +89,9 @@ class ColumnFetcher {
       std::list<std::shared_ptr<Chunk_NS::Chunk>>& chunk_holder,
       std::list<ChunkIter>& chunk_iter_holder,
       const Data_Namespace::MemoryLevel memory_level,
+#ifdef HAVE_DCPMM
+      const unsigned long query_id,
+#endif /* HAVE_DCPMM */
       const int device_id,
       DeviceAllocator* device_allocator) const;
 
@@ -91,6 +100,9 @@ class ColumnFetcher {
       const int col_id,
       const std::map<int, const TableFragments*>& all_tables_fragments,
       const Data_Namespace::MemoryLevel memory_level,
+#ifdef HAVE_DCPMM
+      const unsigned long query_id,
+#endif /* HAVE_DCPMM */
       const int device_id,
       DeviceAllocator* device_allocator,
       const size_t thread_idx) const;
@@ -108,6 +120,9 @@ class ColumnFetcher {
       std::list<std::shared_ptr<Chunk_NS::Chunk>>& chunk_holder,
       std::list<ChunkIter>& chunk_iter_holder,
       const Data_Namespace::MemoryLevel memory_level,
+#ifdef HAVE_DCPMM
+      const unsigned long query_id,
+#endif /* HAVE_DCPMM */
       const int device_id,
       DeviceAllocator* device_allocator,
       const size_t thread_idx) const;

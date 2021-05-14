@@ -18,6 +18,21 @@
 
 namespace Buffer_Namespace {
 
+#ifdef HAVE_DCPMM
+static MemRequirements get_mem_characteristics(BufferProperty bufProp) {
+  switch (bufProp) {
+    case HIGH_BDWTH:
+      return MemRequirements::HIGH_BDWTH;
+    case LOW_LATENCY:
+      return MemRequirements::LOW_LATENCY;
+    case CAPACITY:
+    default:
+      return MemRequirements::CAPACITY;
+  }
+  return MemRequirements::CAPACITY;
+}
+#endif /* HAVE_DCPMM */
+
 CpuHeteroBufferMgr::CpuHeteroBufferMgr(const int device_id,
                                        const size_t max_buffer_size,
                                        const std::string& pmm_path,
@@ -39,9 +54,17 @@ CpuHeteroBufferMgr::~CpuHeteroBufferMgr() {
   clear();
 }
 
-AbstractBuffer* CpuHeteroBufferMgr::constructBuffer(const size_t chunk_page_size,
+AbstractBuffer* CpuHeteroBufferMgr::constructBuffer(
+#ifdef HAVE_DCPMM
+                                                    BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                                    const size_t chunk_page_size,
                                                     const size_t initial_size) {
+#ifdef HAVE_DCPMM
+  return new buffer_type(device_id_, cuda_mgr_, chunk_page_size, initial_size, mem_resource_provider_.get(get_mem_characteristics(bufProp)));
+#else
   return new buffer_type(device_id_, cuda_mgr_, chunk_page_size, initial_size, mem_resource_provider_.get(MemRequirements::CAPACITY));
+#endif /* HAVE_DCPMM */
 }
 void CpuHeteroBufferMgr::destroyBuffer(AbstractBuffer* buffer) {
   buffer_type* casted_buffer = dynamic_cast<buffer_type*>(buffer);

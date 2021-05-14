@@ -106,7 +106,12 @@ void CommandLineOptions::fillOptions() {
   help_desc.add_options()("pmm",
                           po::value<std::string>(&pmm_path),
                           "Path to directory containing Intel(R) DCPMM mount points for cold columns");
-
+#ifdef HAVE_DCPMM
+  help_desc.add_options()("profile-scale-factor",
+                          po::value<int>(&system_parameters.prof_scale_factor)
+                              ->default_value(system_parameters.prof_scale_factor),
+                          "Workload profile scale factor");
+#endif /* HAVE_DCPMM */
   help_desc.add_options()("cpu-only",
                           po::value<bool>(&system_parameters.cpu_only)
                               ->default_value(system_parameters.cpu_only)

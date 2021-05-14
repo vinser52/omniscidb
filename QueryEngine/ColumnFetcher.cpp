@@ -71,6 +71,9 @@ std::pair<const int8_t*, size_t> ColumnFetcher::getOneColumnFragment(
     const int device_id,
     DeviceAllocator* device_allocator,
     const size_t thread_idx,
+#ifdef HAVE_DCPMM
+    unsigned long query_id,
+#endif /* HAVE_DCPMM */
     std::vector<std::shared_ptr<Chunk_NS::Chunk>>& chunks_owner,
     ColumnCacheMap& column_cache) {
   static std::mutex columnar_conversion_mutex;
@@ -102,6 +105,9 @@ std::pair<const int8_t*, size_t> ColumnFetcher::getOneColumnFragment(
         chunk_key,
         effective_mem_lvl,
         effective_mem_lvl == Data_Namespace::CPU_LEVEL ? 0 : device_id,
+#ifdef HAVE_DCPMM
+        query_id,
+#endif /* HAVE_DCPMM */
         chunk_meta_it->second->numBytes,
         chunk_meta_it->second->numElements);
     chunks_owner.push_back(chunk);
@@ -156,6 +162,9 @@ JoinColumn ColumnFetcher::makeJoinColumn(
     const std::vector<Fragmenter_Namespace::FragmentInfo>& fragments,
     const Data_Namespace::MemoryLevel effective_mem_lvl,
     const int device_id,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     DeviceAllocator* device_allocator,
     const size_t thread_idx,
     std::vector<std::shared_ptr<Chunk_NS::Chunk>>& chunks_owner,
@@ -183,6 +192,9 @@ JoinColumn ColumnFetcher::makeJoinColumn(
         effective_mem_lvl == Data_Namespace::CPU_LEVEL ? 0 : device_id,
         device_allocator,
         thread_idx,
+#ifdef HAVE_DCPMM
+	      eo.query_id,
+#endif /* HAVE_DCPMM */
         chunks_owner,
         column_cache);
     if (col_buff != nullptr) {
@@ -212,6 +224,9 @@ const int8_t* ColumnFetcher::getOneTableColumnFragment(
     std::list<std::shared_ptr<Chunk_NS::Chunk>>& chunk_holder,
     std::list<ChunkIter>& chunk_iter_holder,
     const Data_Namespace::MemoryLevel memory_level,
+#ifdef HAVE_DCPMM
+    const unsigned long query_id,
+#endif /* HAVE_DCPMM */
     const int device_id,
     DeviceAllocator* allocator) const {
   const auto fragments_it = all_tables_fragments.find(table_id);
@@ -248,6 +263,9 @@ const int8_t* ColumnFetcher::getOneTableColumnFragment(
         chunk_key,
         memory_level,
         memory_level == Data_Namespace::CPU_LEVEL ? 0 : device_id,
+#ifdef HAVE_DCPMM
+        query_id,
+#endif /* HAVE_DCPMM */
         chunk_meta_it->second->numBytes,
         chunk_meta_it->second->numElements);
     std::lock_guard<std::mutex> chunk_list_lock(chunk_list_mutex_);
@@ -284,6 +302,9 @@ const int8_t* ColumnFetcher::getAllTableColumnFragments(
     const int col_id,
     const std::map<int, const TableFragments*>& all_tables_fragments,
     const Data_Namespace::MemoryLevel memory_level,
+#ifdef HAVE_DCPMM
+    const unsigned long query_id,
+#endif /* HAVE_DCPMM */
     const int device_id,
     DeviceAllocator* device_allocator,
     const size_t thread_idx) const {
@@ -318,6 +339,9 @@ const int8_t* ColumnFetcher::getAllTableColumnFragments(
                                                     chunk_holder,
                                                     chunk_iter_holder,
                                                     Data_Namespace::CPU_LEVEL,
+#ifdef HAVE_DCPMM
+                                                    query_id,
+#endif /* HAVE_DCPMM */
                                                     int(0),
                                                     device_allocator);
         column_frags.push_back(
@@ -367,6 +391,9 @@ const int8_t* ColumnFetcher::linearizeColumnFragments(
     std::list<std::shared_ptr<Chunk_NS::Chunk>>& chunk_holder,
     std::list<ChunkIter>& chunk_iter_holder,
     const Data_Namespace::MemoryLevel memory_level,
+#ifdef HAVE_DCPMM
+    const unsigned long query_id,
+#endif /* HAVE_DCPMM */
     const int device_id,
     DeviceAllocator* device_allocator,
     const size_t thread_idx) const {
@@ -435,6 +462,9 @@ const int8_t* ColumnFetcher::linearizeColumnFragments(
                                         chunk_key,
                                         Data_Namespace::CPU_LEVEL,
                                         0,
+#ifdef HAVE_DCPMM
+                                        query_id,
+#endif /* HAVE_DCPMM */
                                         chunk_meta_it->second->numBytes,
                                         chunk_meta_it->second->numElements);
       local_chunk_holder.push_back(chunk);

@@ -79,6 +79,9 @@ size_t get_output_row_count(const TableFunctionExecutionUnit& exe_unit,
 
 ResultSetPtr TableFunctionExecutionContext::execute(
     const TableFunctionExecutionUnit& exe_unit,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     const std::vector<InputTableInfo>& table_infos,
     const TableFunctionCompilationContext* compilation_context,
     const ColumnFetcher& column_fetcher,
@@ -123,6 +126,9 @@ ResultSetPtr TableFunctionExecutionContext::execute(
           device_id,
           device_allocator.get(),
           /*thread_idx=*/0,
+#ifdef HAVE_DCPMM
+          eo.query_id,
+#endif /* HAVE_DCPMM */
           chunks_owner,
           column_fetcher.columnarized_table_cache_);
       // We use the size of the first column to be the size of the output column

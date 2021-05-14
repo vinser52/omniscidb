@@ -472,6 +472,9 @@ void TableOptimizer::vacuumFragments(const TableDescriptor* td,
                                                    chunk_key,
                                                    updel_roll.memoryLevel,
                                                    0,
+#ifdef HAVE_DCPMM
+                                                   0,
+#endif /* HAVE_DCPMM */
                                                    chunk_metadata->numBytes,
                                                    chunk_metadata->numElements);
       td->fragmenter->compactRows(&cat_,

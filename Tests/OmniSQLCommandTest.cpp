@@ -60,6 +60,10 @@ class CoreMockClient {
   MockMethod(get_dashboards)
   MockMethod(get_session_info)
   MockMethod(get_dashboard)
+#ifdef HAVE_DCPMM
+  MockMethod(start_profiling)
+  MockMethod(stop_profiling)
+#endif /* HAVE_DCPMM */
 };
 // clang-format on
 

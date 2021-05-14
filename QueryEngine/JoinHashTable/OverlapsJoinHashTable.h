@@ -116,6 +116,9 @@ class OverlapsJoinHashTable : public HashJoin {
       const Data_Namespace::MemoryLevel memory_level,
       const JoinType join_type,
       const int device_count,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       ColumnCacheMap& column_cache,
       Executor* executor,
       const RegisteredQueryHint& query_hint);
@@ -140,9 +143,17 @@ class OverlapsJoinHashTable : public HashJoin {
   }
 
  protected:
-  void reify(const HashType preferred_layout);
+  void reify(
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
+    const HashType preferred_layout);
 
-  void reifyWithLayout(const HashType layout);
+  void reifyWithLayout(
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
+    const HashType layout);
 
   virtual void reifyImpl(std::vector<ColumnsForDevice>& columns_per_device,
                          const Fragmenter_Namespace::TableInfo& query_info,
@@ -171,6 +182,9 @@ class OverlapsJoinHashTable : public HashJoin {
   ColumnsForDevice fetchColumnsForDevice(
       const std::vector<Fragmenter_Namespace::FragmentInfo>& fragments,
       const int device_id,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       DeviceAllocator* dev_buff_owner);
 
   // returns entry_count, emitted_keys_count

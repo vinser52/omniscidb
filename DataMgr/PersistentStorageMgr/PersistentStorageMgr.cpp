@@ -53,11 +53,18 @@ PersistentStorageMgr::PersistentStorageMgr(
           : std::make_unique<foreign_storage::ForeignStorageMgr>();
 }
 
-AbstractBuffer* PersistentStorageMgr::createBuffer(const ChunkKey& chunk_key,
+AbstractBuffer* PersistentStorageMgr::createBuffer(
+#ifdef HAVE_DCPMM
+                                                   BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                                   const ChunkKey& chunk_key,
                                                    const size_t page_size,
                                                    const size_t initial_size) {
   return getStorageMgrForTableKey(chunk_key)->createBuffer(
-      chunk_key, page_size, initial_size);
+#ifdef HAVE_DCPMM
+                                                           bufProp,
+#endif /* HAVE_DCPMM */
+                                                           chunk_key, page_size, initial_size);
 }
 
 void PersistentStorageMgr::deleteBuffer(const ChunkKey& chunk_key, const bool purge) {
@@ -70,9 +77,17 @@ void PersistentStorageMgr::deleteBuffersWithPrefix(const ChunkKey& chunk_key_pre
       ->deleteBuffersWithPrefix(chunk_key_prefix, purge);
 }
 
-AbstractBuffer* PersistentStorageMgr::getBuffer(const ChunkKey& chunk_key,
+AbstractBuffer* PersistentStorageMgr::getBuffer(
+#ifdef HAVE_DCPMM
+                                                BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                                const ChunkKey& chunk_key,
                                                 const size_t num_bytes) {
-  return getStorageMgrForTableKey(chunk_key)->getBuffer(chunk_key, num_bytes);
+  return getStorageMgrForTableKey(chunk_key)->getBuffer(
+#ifdef HAVE_DCPMM
+                                                        bufProp,
+#endif /* HAVE_DCPMM */
+                                                        chunk_key, num_bytes);
 }
 
 void PersistentStorageMgr::fetchBuffer(const ChunkKey& chunk_key,

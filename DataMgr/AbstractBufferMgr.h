@@ -48,6 +48,14 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
 
 namespace Data_Namespace {
 
+#ifdef HAVE_DCPMM
+enum BufferProperty {
+  CAPACITY,
+  HIGH_BDWTH,
+  LOW_LATENCY
+};
+#endif /* HAVE_DCPMM */
+
 /**
  * @class   AbstractBufferMgr
  * @brief   Abstract prototype (interface) for a data manager.
@@ -66,7 +74,11 @@ class AbstractBufferMgr {
   AbstractBufferMgr(const int deviceId) : device_id_(deviceId) {}
 
   // Chunk API
-  virtual AbstractBuffer* createBuffer(const ChunkKey& key,
+  virtual AbstractBuffer* createBuffer(
+#ifdef HAVE_DCPMM
+                                       BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                       const ChunkKey& key,
                                        const size_t pageSize = 0,
                                        const size_t initialSize = 0) = 0;
   virtual void deleteBuffer(
@@ -74,7 +86,12 @@ class AbstractBufferMgr {
       const bool purge = true) = 0;  // purge param only used in FileMgr
   virtual void deleteBuffersWithPrefix(const ChunkKey& keyPrefix,
                                        const bool purge = true) = 0;
-  virtual AbstractBuffer* getBuffer(const ChunkKey& key, const size_t numBytes = 0) = 0;
+  virtual AbstractBuffer* getBuffer(
+#ifdef HAVE_DCPMM
+                                    BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                    const ChunkKey& key,
+                                    const size_t numBytes = 0) = 0;
   virtual void fetchBuffer(const ChunkKey& key,
                            AbstractBuffer* destBuffer,
                            const size_t numBytes = 0) = 0;

@@ -163,6 +163,9 @@ class HashJoin {
       const std::vector<Fragmenter_Namespace::FragmentInfo>& fragment_info,
       const Data_Namespace::MemoryLevel effective_memory_level,
       const int device_id,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       std::vector<std::shared_ptr<Chunk_NS::Chunk>>& chunks_owner,
       DeviceAllocator* dev_buff_owner,
       std::vector<std::shared_ptr<void>>& malloc_owner,
@@ -177,6 +180,9 @@ class HashJoin {
       const JoinType join_type,
       const HashType preferred_hash_type,
       const int device_count,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       ColumnCacheMap& column_cache,
       Executor* executor,
       const RegisteredQueryHint& query_hint);
@@ -190,6 +196,9 @@ class HashJoin {
       const Data_Namespace::MemoryLevel memory_level,
       const HashType preferred_hash_type,
       const int device_count,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       ColumnCacheMap& column_cache,
       Executor* executor);
 
@@ -199,6 +208,9 @@ class HashJoin {
       const Data_Namespace::MemoryLevel memory_level,
       const HashType preferred_hash_type,
       const int device_count,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       ColumnCacheMap& column_cache,
       Executor* executor);
 

@@ -133,6 +133,11 @@ if(ENABLE_JAVA_REMOTE_DEBUG)
   add_definitions("-DENABLE_JAVA_REMOTE_DEBUG")
 endif()
 
+option(ENABLE_DCPMM "Enable Volatile usage of DCPMM" OFF)
+if(ENABLE_DCPMM)
+  add_definitions("-DHAVE_DCPMM")
+endif()
+
 option(ENABLE_CUDA "Enable CUDA support" ON)
 if(ENABLE_CUDA)
   find_package(CUDA REQUIRED)

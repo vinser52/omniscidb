@@ -72,6 +72,9 @@ struct SystemParameters {
   size_t calcite_keepalive = false;  // calcite keepalive connection
   int num_executors = 2;
   int num_sessions = -1;  // maximum number of user sessions
+#ifdef HAVE_DCPMM
+  int prof_scale_factor = 1;        // workload profile scale factor
+#endif /* HAVE_DCPMM */
 
   SystemParameters() : cuda_block_size(0), cuda_grid_size(0), calcite_max_mem(1024) {}
 };

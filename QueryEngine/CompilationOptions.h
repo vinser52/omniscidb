@@ -80,6 +80,9 @@ struct ExecutionOptions {
   bool allow_runtime_query_interrupt;
   double running_query_interrupt_freq;
   unsigned pending_query_interrupt_freq;
+#ifdef HAVE_DCPMM
+  unsigned long query_id = 0;
+#endif /* HAVE_DCPMM */
   ExecutorType executor_type = ExecutorType::Native;
   std::vector<size_t> outer_fragment_indices{};
 

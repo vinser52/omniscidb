@@ -1731,7 +1731,11 @@ ResultSetPtr Executor::executeTableFunction(
 
   TableFunctionExecutionContext exe_context(getRowSetMemoryOwner());
   return exe_context.execute(
-      exe_unit, table_infos, &compilation_context, column_fetcher, co.device_type, this);
+      exe_unit,
+#ifdef HAVE_DCPMM
+      eo,
+#endif /* HAVE_DCPMM */
+      table_infos, &compilation_context, column_fetcher, co.device_type, this);
 }
 
 ResultSetPtr Executor::executeExplain(const QueryCompilationDescriptor& query_comp_desc) {
@@ -2528,6 +2532,9 @@ FetchResult Executor::fetchChunks(
     const ColumnFetcher& column_fetcher,
     const RelAlgExecutionUnit& ra_exe_unit,
     const int device_id,
+#ifdef HAVE_DCPMM
+    const unsigned long query_id,
+#endif /* HAVE_DCPMM */
     const Data_Namespace::MemoryLevel memory_level,
     const std::map<int, const TableFragments*>& all_tables_fragments,
     const FragmentsList& selected_fragments,
@@ -2619,6 +2626,9 @@ FetchResult Executor::fetchChunks(
                                                         chunks,
                                                         chunk_iterators,
                                                         memory_level,
+#ifdef HAVE_DCPMM
+                                                        query_id,
+#endif /* HAVE_DCPMM */
                                                         device_id,
                                                         device_allocator,
                                                         thread_idx);
@@ -2628,6 +2638,9 @@ FetchResult Executor::fetchChunks(
                                                           col_id->getColId(),
                                                           all_tables_fragments,
                                                           memory_level_for_column,
+#ifdef HAVE_DCPMM
+                                                          query_id,
+#endif /* HAVE_DCPMM */
                                                           device_id,
                                                           device_allocator,
                                                           thread_idx);
@@ -2641,6 +2654,9 @@ FetchResult Executor::fetchChunks(
                                                        chunks,
                                                        chunk_iterators,
                                                        memory_level_for_column,
+#ifdef HAVE_DCPMM
+                                                       query_id,
+#endif /* HAVE_DCPMM */
                                                        device_id,
                                                        device_allocator);
         }
@@ -2659,6 +2675,9 @@ FetchResult Executor::fetchUnionChunks(
     const ColumnFetcher& column_fetcher,
     const RelAlgExecutionUnit& ra_exe_unit,
     const int device_id,
+#ifdef HAVE_DCPMM
+    const unsigned long query_id,
+#endif /* HAVE_DCPMM */
     const Data_Namespace::MemoryLevel memory_level,
     const std::map<int, const TableFragments*>& all_tables_fragments,
     const FragmentsList& selected_fragments,
@@ -2779,6 +2798,9 @@ FetchResult Executor::fetchUnionChunks(
                                                           col_id->getColId(),
                                                           all_tables_fragments,
                                                           memory_level_for_column,
+#ifdef HAVE_DCPMM
+                                                          query_id,
+#endif /* HAVE_DCPMM */
                                                           device_id,
                                                           device_allocator,
                                                           thread_idx);
@@ -2791,6 +2813,9 @@ FetchResult Executor::fetchUnionChunks(
                                                          chunks,
                                                          chunk_iterators,
                                                          memory_level_for_column,
+#ifdef HAVE_DCPMM
+                                                         query_id,
+#endif /* HAVE_DCPMM */
                                                          device_id,
                                                          device_allocator);
           }
@@ -3397,6 +3422,9 @@ Executor::JoinHashTableOrError Executor::buildHashTableForQualifier(
     const std::vector<InputTableInfo>& query_infos,
     const MemoryLevel memory_level,
     const JoinType join_type,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     const HashType preferred_hash_type,
     ColumnCacheMap& column_cache,
     const RegisteredQueryHint& query_hint) {
@@ -3413,6 +3441,9 @@ Executor::JoinHashTableOrError Executor::buildHashTableForQualifier(
                                      join_type,
                                      preferred_hash_type,
                                      deviceCountForMemoryLevel(memory_level),
+#ifdef HAVE_DCPMM
+					                           eo,
+#endif /* HAVE_DCPMM */
                                      column_cache,
                                      this,
                                      query_hint);

@@ -54,7 +54,11 @@ class FileMgrTest : public testing::Test {
 
   void initializeChunk(int32_t value) {
     auto file_mgr = getFileMgr();
-    auto buffer = file_mgr->createBuffer(TEST_CHUNK_KEY);
+    auto buffer = file_mgr->createBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      TEST_CHUNK_KEY);
     buffer->initEncoder(SQLTypeInfo{kINT});
     std::vector<int32_t> data{value};
     writeData(buffer, data, 0);
@@ -199,7 +203,11 @@ TEST_F(FileMgrTest, put_checkpoint_get) {
   ASSERT_EQ(file_mgr->lastCheckpointedEpoch(), 1);
   file_mgr->checkpoint();
   ASSERT_EQ(file_mgr->lastCheckpointedEpoch(), 2);
-  AbstractBuffer* file_buffer_get = file_mgr->getBuffer(TEST_CHUNK_KEY, 24);
+  AbstractBuffer* file_buffer_get = file_mgr->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    TEST_CHUNK_KEY, 24);
   ASSERT_EQ(file_buffer_put, file_buffer_get);
   CHECK(!(file_buffer_get->isDirty()));
   CHECK(!(file_buffer_get->isUpdated()));
@@ -220,7 +228,11 @@ TEST_F(FileMgrTest, put_checkpoint_get_double_write) {
   ASSERT_EQ(file_mgr->lastCheckpointedEpoch(), 1);
   file_mgr->checkpoint();
   ASSERT_EQ(file_mgr->lastCheckpointedEpoch(), 2);
-  AbstractBuffer* file_buffer = file_mgr->getBuffer(TEST_CHUNK_KEY, 24);
+  AbstractBuffer* file_buffer = file_mgr->getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    TEST_CHUNK_KEY, 24);
   ASSERT_EQ(file_mgr->lastCheckpointedEpoch(), 2);
   ASSERT_FALSE(file_buffer->isDirty());
   ASSERT_EQ(file_buffer->size(), static_cast<size_t>(24));
@@ -283,7 +295,11 @@ TEST_F(FileMgrTest, buffer_append_and_recovery) {
     ASSERT_EQ(chunk_metadata->numBytes, static_cast<size_t>(24));
     ASSERT_EQ(chunk_metadata->numElements, static_cast<size_t>(6));
     AbstractBuffer* file_buffer =
-        file_mgr->getBuffer(TEST_CHUNK_KEY, chunk_metadata->numBytes);
+        file_mgr->getBuffer(
+#ifdef HAVE_DCPMM
+          BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+          TEST_CHUNK_KEY, chunk_metadata->numBytes);
     {
       SCOPED_TRACE("Buffer Append and Recovery - Compare #2");
       compareBuffersAndMetadata(&source_buffer, file_buffer);
@@ -319,7 +335,11 @@ TEST_F(FileMgrTest, buffer_update_and_recovery) {
     source_buffer.clearDirtyBits();
 
     auto file_mgr = getFileMgr();
-    AbstractBuffer* file_buffer = file_mgr->getBuffer(TEST_CHUNK_KEY);
+    AbstractBuffer* file_buffer = file_mgr->getBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      TEST_CHUNK_KEY);
     ASSERT_FALSE(source_buffer.isDirty());
     ASSERT_FALSE(source_buffer.isUpdated());
     ASSERT_FALSE(source_buffer.isAppended());
@@ -401,7 +421,11 @@ TEST_F(FileMgrTest, buffer_update_and_recovery) {
                                        TEST_CHUNK_KEY[CHUNK_KEY_TABLE_IDX],
                                        file_mgr_params);
     file_mgr = getFileMgr();
-    file_buffer = file_mgr->getBuffer(TEST_CHUNK_KEY);
+    file_buffer = file_mgr->getBuffer(
+#ifdef HAVE_DCPMM
+        BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      TEST_CHUNK_KEY);
     ASSERT_FALSE(file_buffer->isDirty());
     ASSERT_FALSE(file_buffer->isUpdated());
     ASSERT_FALSE(file_buffer->isAppended());
@@ -440,7 +464,11 @@ TEST_F(FileMgrTest, capped_metadata) {
     for (int data_write = 1; data_write <= num_data_writes; ++data_write) {
       std::vector<int32_t> data;
       data.emplace_back(data_write);
-      AbstractBuffer* file_buffer = global_file_mgr_->getBuffer(capped_chunk_key);
+      AbstractBuffer* file_buffer = global_file_mgr_->getBuffer(
+#ifdef HAVE_DCPMM
+        BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+        capped_chunk_key);
       appendData(file_buffer, data);
       global_file_mgr_->checkpoint(capped_chunk_key[0], capped_chunk_key[1]);
       ASSERT_EQ(global_file_mgr_->getTableEpoch(capped_chunk_key[0], capped_chunk_key[1]),
@@ -505,7 +533,11 @@ class DataCompactionTest : public FileMgrTest {
   void assertBufferValueAndMetadata(int32_t expected_value, int32_t column_id) {
     auto chunk_key = getChunkKey(column_id);
     auto file_mgr = getFileMgr();
-    auto buffer = file_mgr->getBuffer(chunk_key, sizeof(int32_t));
+    auto buffer = file_mgr->getBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      chunk_key, sizeof(int32_t));
     int32_t value;
     buffer->read(reinterpret_cast<int8_t*>(&value), sizeof(int32_t));
     EXPECT_EQ(expected_value, value);
@@ -514,7 +546,11 @@ class DataCompactionTest : public FileMgrTest {
 
   AbstractBuffer* createBuffer(int32_t column_id) {
     auto chunk_key = getChunkKey(column_id);
-    auto buffer = getFileMgr()->createBuffer(chunk_key, DEFAULT_PAGE_SIZE, 0);
+    auto buffer = getFileMgr()->createBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      chunk_key, DEFAULT_PAGE_SIZE, 0);
     buffer->initEncoder(SQLTypeInfo{kINT});
     return buffer;
   }
@@ -972,6 +1008,9 @@ class MaxRollbackEpochTest : public FileMgrTest {
     const auto& chunk_key = TEST_CHUNK_KEY;
     constexpr size_t reserved_header_size{32};
     auto buffer = getFileMgr()->createBuffer(
+#ifdef HAVE_DCPMM
+        BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
         chunk_key, reserved_header_size + (num_entries_per_page * sizeof(int32_t)), 0);
     buffer->initEncoder(SQLTypeInfo{kINT});
     return buffer;
@@ -1070,7 +1109,11 @@ class FileMgrUnitTest : public testing::Test {
     auto gfm = std::make_unique<File_Namespace::GlobalFileMgr>(
         0, fsi, file_mgr_path, 0, page_size_);
     auto fm = dynamic_cast<File_Namespace::FileMgr*>(gfm->getFileMgr(1, 1));
-    auto buffer = fm->createBuffer({1, 1, 1, 1});
+    auto buffer = fm->createBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      {1, 1, 1, 1});
     auto page_data_size = page_size_ - buffer->reservedHeaderSize();
     for (size_t i = 0; i < page_data_size * num_pages; i += 4) {
       buffer->append(write_buffer.data(), 4);
@@ -1085,11 +1128,25 @@ TEST_F(FileMgrUnitTest, InitializeWithUncheckpointedFreedFirstPage) {
   {
     auto temp_gfm = initializeGFM(fsi, 2);
     auto buffer =
-        dynamic_cast<File_Namespace::FileBuffer*>(temp_gfm->getBuffer({1, 1, 1, 1}));
+        dynamic_cast<File_Namespace::FileBuffer*>(temp_gfm->getBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      {1, 1, 1, 1}));
     buffer->freePage(buffer->getMultiPage().front().current().page);
   }
-  File_Namespace::GlobalFileMgr gfm(0, fsi, file_mgr_path, 0, page_size_);
-  auto buffer = gfm.getBuffer({1, 1, 1, 1});
+  File_Namespace::GlobalFileMgr gfm(
+    0, fsi,
+#ifdef HAVE_DCPMM_STORE
+    false,
+    "",
+#endif /* HAVE_DCPMM_STORE */
+    file_mgr_path, 0, page_size_);
+  auto buffer = gfm.getBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      {1, 1, 1, 1});
   ASSERT_EQ(buffer->pageCount(), 2U);
 }
 
@@ -1098,11 +1155,25 @@ TEST_F(FileMgrUnitTest, InitializeWithUncheckpointedFreedLastPage) {
   {
     auto temp_gfm = initializeGFM(fsi, 2);
     auto buffer =
-        dynamic_cast<File_Namespace::FileBuffer*>(temp_gfm->getBuffer({1, 1, 1, 1}));
+        dynamic_cast<File_Namespace::FileBuffer*>(temp_gfm->getBuffer(
+#ifdef HAVE_DCPMM
+          BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+          {1, 1, 1, 1}));
     buffer->freePage(buffer->getMultiPage().back().current().page);
   }
-  File_Namespace::GlobalFileMgr gfm(0, fsi, file_mgr_path, 0, page_size_);
-  auto buffer = gfm.getBuffer({1, 1, 1, 1});
+  File_Namespace::GlobalFileMgr gfm(
+    0, fsi,
+#ifdef HAVE_DCPMM_STORE
+    false,
+    "",
+#endif /* HAVE_DCPMM_STORE */
+    file_mgr_path, 0, page_size_);
+  auto buffer = gfm.getBuffer(
+#ifdef HAVE_DCPMM
+      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+      {1, 1, 1, 1});
   ASSERT_EQ(buffer->pageCount(), 2U);
 }
 
@@ -1112,11 +1183,25 @@ TEST_F(FileMgrUnitTest, InitializeWithUncheckpointedAppendPages) {
   {
     auto temp_gfm = initializeGFM(fsi, 1);
     auto buffer =
-        dynamic_cast<File_Namespace::FileBuffer*>(temp_gfm->getBuffer({1, 1, 1, 1}));
+        dynamic_cast<File_Namespace::FileBuffer*>(temp_gfm->getBuffer(
+#ifdef HAVE_DCPMM
+          BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+          {1, 1, 1, 1}));
     buffer->append(write_buffer.data(), 4);
   }
-  File_Namespace::GlobalFileMgr gfm(0, fsi, file_mgr_path, 0, page_size_);
-  auto buffer = dynamic_cast<File_Namespace::FileBuffer*>(gfm.getBuffer({1, 1, 1, 1}));
+  File_Namespace::GlobalFileMgr gfm(
+    0, fsi,
+#ifdef HAVE_DCPMM_STORE
+    false,
+    "",
+#endif /* HAVE_DCPMM_STORE */
+    file_mgr_path, 0, page_size_);
+  auto buffer = dynamic_cast<File_Namespace::FileBuffer*>(gfm.getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    {1, 1, 1, 1}));
   ASSERT_EQ(buffer->pageCount(), 1U);
 }
 

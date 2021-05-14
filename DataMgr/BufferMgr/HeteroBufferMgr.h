@@ -42,8 +42,12 @@ public:
 
   ~HeteroBufferMgr() override;
 
-/// Creates a chunk with the specified key and page size.
-  AbstractBuffer* createBuffer(const ChunkKey& key,
+  /// Creates a chunk with the specified key and page size.
+  AbstractBuffer* createBuffer(
+#ifdef HAVE_DCPMM
+                               BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                               const ChunkKey& key,
                                const size_t page_size = 0,
                                const size_t initial_size = 0) override;
 
@@ -53,7 +57,11 @@ public:
   void deleteBuffersWithPrefix(const ChunkKey& keyPrefix,
                                const bool purge = true) override;
 
-  AbstractBuffer* getBuffer(const ChunkKey& key, const size_t numBytes = 0) override;
+  AbstractBuffer* getBuffer(
+#ifdef HAVE_DCPMM
+                            BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                            const ChunkKey& key, const size_t numBytes = 0) override;
 
   void fetchBuffer(const ChunkKey& key,
                    AbstractBuffer* destBuffer,
@@ -69,7 +77,7 @@ public:
   bool isBufferOnDevice(const ChunkKey& key) override;
 
   std::string printSlabs() override { return "Not Implemented"; }
-  void clearSlabs() override;
+  virtual void clearSlabs();
   size_t getMaxSize() override;
   size_t getInUseSize() override;
   size_t getAllocated() override;
@@ -95,7 +103,11 @@ protected:
   using reverse_index_type = std::unordered_map<AbstractBuffer*, typename chunk_index_type::iterator>;
   using chunk_index_iterator = typename chunk_index_type::iterator;
 
-  virtual AbstractBuffer* constructBuffer(const size_t chunk_page_size,
+  virtual AbstractBuffer* constructBuffer(
+#ifdef HAVE_DCPMM
+                                          BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                          const size_t chunk_page_size,
                                           const size_t initial_size) = 0;
   virtual void destroyBuffer(AbstractBuffer* buffer) = 0;
 

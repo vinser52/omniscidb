@@ -56,6 +56,9 @@ JoinColumn HashJoin::fetchJoinColumn(
     const std::vector<Fragmenter_Namespace::FragmentInfo>& fragment_info,
     const Data_Namespace::MemoryLevel effective_memory_level,
     const int device_id,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     std::vector<std::shared_ptr<Chunk_NS::Chunk>>& chunks_owner,
     DeviceAllocator* dev_buff_owner,
     std::vector<std::shared_ptr<void>>& malloc_owner,
@@ -69,6 +72,9 @@ JoinColumn HashJoin::fetchJoinColumn(
                                                            fragment_info,
                                                            effective_memory_level,
                                                            device_id,
+#ifdef HAVE_DCPMM
+							                                             eo,
+#endif /* HAVE_DCPMM */
                                                            dev_buff_owner,
                                                            /*thread_idx=*/0,
                                                            chunks_owner,
@@ -242,6 +248,9 @@ std::shared_ptr<HashJoin> HashJoin::getInstance(
     const JoinType join_type,
     const HashType preferred_hash_type,
     const int device_count,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     ColumnCacheMap& column_cache,
     Executor* executor,
     const RegisteredQueryHint& query_hint) {
@@ -259,6 +268,9 @@ std::shared_ptr<HashJoin> HashJoin::getInstance(
                                                          memory_level,
                                                          join_type,
                                                          device_count,
+#ifdef HAVE_DCPMM
+                                                         eo,
+#endif /* HAVE_DCPMM */
                                                          column_cache,
                                                          executor,
                                                          query_hint);
@@ -271,6 +283,9 @@ std::shared_ptr<HashJoin> HashJoin::getInstance(
                                                          join_type,
                                                          preferred_hash_type,
                                                          device_count,
+#ifdef HAVE_DCPMM
+                                                         eo,
+#endif /* HAVE_DCPMM */
                                                          column_cache,
                                                          executor);
   } else {
@@ -282,6 +297,9 @@ std::shared_ptr<HashJoin> HashJoin::getInstance(
                                                           join_type,
                                                           preferred_hash_type,
                                                           device_count,
+#ifdef HAVE_DCPMM
+                                                          eo,
+#endif /* HAVE_DCPMM */
                                                           column_cache,
                                                           executor);
     } catch (TooManyHashEntries&) {
@@ -296,6 +314,9 @@ std::shared_ptr<HashJoin> HashJoin::getInstance(
                                                            join_type,
                                                            preferred_hash_type,
                                                            device_count,
+#ifdef HAVE_DCPMM
+                                                           eo,
+#endif /* HAVE_DCPMM */
                                                            column_cache,
                                                            executor);
     }
@@ -478,6 +499,9 @@ std::shared_ptr<HashJoin> HashJoin::getSyntheticInstance(
     const Data_Namespace::MemoryLevel memory_level,
     const HashType preferred_hash_type,
     const int device_count,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     ColumnCacheMap& column_cache,
     Executor* executor) {
   auto a1 = getSyntheticColumnVar(table1, column1, 0, executor);
@@ -497,6 +521,9 @@ std::shared_ptr<HashJoin> HashJoin::getSyntheticInstance(
                                           JoinType::INNER,
                                           preferred_hash_type,
                                           device_count,
+#ifdef HAVE_DCPMM
+                                          eo,
+#endif /* HAVE_DCPMM */
                                           column_cache,
                                           executor,
                                           query_hint);
@@ -509,6 +536,9 @@ std::shared_ptr<HashJoin> HashJoin::getSyntheticInstance(
     const Data_Namespace::MemoryLevel memory_level,
     const HashType preferred_hash_type,
     const int device_count,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     ColumnCacheMap& column_cache,
     Executor* executor) {
   std::set<const Analyzer::ColumnVar*> cvs =
@@ -523,6 +553,9 @@ std::shared_ptr<HashJoin> HashJoin::getSyntheticInstance(
                                           JoinType::INNER,
                                           preferred_hash_type,
                                           device_count,
+#ifdef HAVE_DCPMM
+                                          eo,
+#endif /* HAVE_DCPMM */
                                           column_cache,
                                           executor,
                                           query_hint);

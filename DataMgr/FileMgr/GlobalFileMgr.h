@@ -63,10 +63,18 @@ class GlobalFileMgr : public AbstractBufferMgr {  // implements
                 const size_t defaultPageSize = DEFAULT_PAGE_SIZE);
 
   /// Creates a chunk with the specified key and page size.
-  AbstractBuffer* createBuffer(const ChunkKey& key,
+  AbstractBuffer* createBuffer(
+#ifdef HAVE_DCPMM
+                               BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                               const ChunkKey& key,
                                size_t pageSize = 0,
                                const size_t numBytes = 0) override {
-    return getFileMgr(key)->createBuffer(key, pageSize, numBytes);
+    return getFileMgr(key)->createBuffer(
+#ifdef HAVE_DCPMM
+                                         bufProp,
+#endif /* HAVE_DCPMM */
+                                         key, pageSize, numBytes);
   }
 
   bool isBufferOnDevice(const ChunkKey& key) override {
@@ -85,8 +93,16 @@ class GlobalFileMgr : public AbstractBufferMgr {  // implements
                                const bool purge = true) override;
 
   /// Returns the a pointer to the chunk with the specified key.
-  AbstractBuffer* getBuffer(const ChunkKey& key, const size_t numBytes = 0) override {
-    return getFileMgr(key)->getBuffer(key, numBytes);
+  AbstractBuffer* getBuffer(
+#ifdef HAVE_DCPMM
+                            BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                            const ChunkKey& key, const size_t numBytes = 0) override {
+    return getFileMgr(key)->getBuffer(
+#ifdef HAVE_DCPMM
+                                      bufProp,
+#endif /* HAVE_DCPMM */
+                                      key, numBytes);
   }
 
   void fetchBuffer(const ChunkKey& key,

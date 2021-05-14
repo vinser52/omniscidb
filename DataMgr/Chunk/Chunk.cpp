@@ -25,15 +25,34 @@
 #include "DataMgr/StringNoneEncoder.h"
 
 namespace Chunk_NS {
+#ifdef HAVE_DCPMM
+static auto get_hotness(const ColumnDescriptor& cd) {
+  if (cd.isHotCol) {
+    return Data_Namespace::BufferDescriptor::Hotness::Hot;
+  }
+  else if (cd.isSoftHotCol) {
+    return Data_Namespace::BufferDescriptor::Hotness::SoftHot;
+  } 
+  return Data_Namespace::BufferDescriptor::Hotness::Cold;
+}
+#endif /* HAVE_DCPMM */
 std::shared_ptr<Chunk> Chunk::getChunk(const ColumnDescriptor* cd,
                                        DataMgr* data_mgr,
                                        const ChunkKey& key,
                                        const MemoryLevel memoryLevel,
                                        const int deviceId,
+#ifdef HAVE_DCPMM
+                                       const unsigned long query_id,
+#endif /* HAVE_DCPMM */
                                        const size_t numBytes,
                                        const size_t numElems) {
+  MemoryLevel level = memoryLevel;
   std::shared_ptr<Chunk> chunkp = std::make_shared<Chunk>(Chunk(cd));
-  chunkp->getChunkBuffer(data_mgr, key, memoryLevel, deviceId, numBytes, numElems);
+  chunkp->getChunkBuffer(data_mgr, key, level, deviceId,
+#ifdef HAVE_DCPMM
+                         query_id,
+#endif /* HAVE_DCPMM */
+                         numBytes, numElems);
   return chunkp;
 }
 
@@ -59,18 +78,41 @@ void Chunk::getChunkBuffer(DataMgr* data_mgr,
                            const ChunkKey& key,
                            const MemoryLevel mem_level,
                            const int device_id,
+#ifdef HAVE_DCPMM
+                           const unsigned long query_id,
+#endif /* HAVE_DCPMM */
                            const size_t num_bytes,
                            const size_t num_elems) {
+#ifdef HAVE_DCPMM
+  BufferDescriptor bd {get_hotness(*column_desc_), false};
+#endif /* HAVE_DCPMM */
   if (column_desc_->columnType.is_varlen() &&
       !column_desc_->columnType.is_fixlen_array()) {
     ChunkKey subKey = key;
     subKey.push_back(1);  // 1 for the main buffer_
-    buffer_ = data_mgr->getChunkBuffer(subKey, mem_level, device_id, num_bytes);
+    buffer_ = data_mgr->getChunkBuffer(
+#ifdef HAVE_DCPMM
+                                       bd,
+#endif /* HAVE_DCPMM */
+                                       subKey, mem_level,
+#ifdef HAVE_DCPMM
+                                       query_id,
+#endif /* HAVE_DCPMM */
+                                       device_id, num_bytes);
     subKey.pop_back();
     subKey.push_back(2);  // 2 for the index buffer_
+#ifdef HAVE_DCPMM
+    bd.isIndex = true;
+#endif /* HAVE_DCPMM */
     index_buf_ = data_mgr->getChunkBuffer(
+#ifdef HAVE_DCPMM
+        bd,
+#endif /* HAVE_DCPMM */
         subKey,
         mem_level,
+#ifdef HAVE_DCPMM
+        query_id,
+#endif /* HAVE_DCPMM */
         device_id,
         (num_elems + 1) * sizeof(StringOffsetT));  // always record n+1 offsets so string
                                                    // length can be calculated
@@ -103,7 +145,15 @@ void Chunk::getChunkBuffer(DataMgr* data_mgr,
         UNREACHABLE();
     }
   } else {
-    buffer_ = data_mgr->getChunkBuffer(key, mem_level, device_id, num_bytes);
+    buffer_ = data_mgr->getChunkBuffer(
+#ifdef HAVE_DCPMM
+                                       bd,
+#endif /* HAVE_DCPMM */
+                                       key, mem_level,
+#ifdef HAVE_DCPMM
+                                       query_id,
+#endif /* HAVE_DCPMM */
+                                       device_id, num_bytes);
   }
 }
 
@@ -112,16 +162,34 @@ void Chunk::createChunkBuffer(DataMgr* data_mgr,
                               const MemoryLevel mem_level,
                               const int device_id,
                               const size_t page_size) {
+#ifdef HAVE_DCPMM
+  BufferDescriptor bd{get_hotness(*column_desc_), false};
+#endif /* HAVE_DCPMM */
   if (column_desc_->columnType.is_varlen() &&
       !column_desc_->columnType.is_fixlen_array()) {
     ChunkKey subKey = key;
     subKey.push_back(1);  // 1 for the main buffer_
-    buffer_ = data_mgr->createChunkBuffer(subKey, mem_level, device_id, page_size);
+    buffer_ = data_mgr->createChunkBuffer(
+#ifdef HAVE_DCPMM
+                                          bd,
+#endif /* HAVE_DCPMM */
+                                          subKey, mem_level, device_id, page_size);
     subKey.pop_back();
     subKey.push_back(2);  // 2 for the index buffer_
-    index_buf_ = data_mgr->createChunkBuffer(subKey, mem_level, device_id, page_size);
+#ifdef HAVE_DCPMM
+    bd.isIndex = true;
+#endif /* HAVE_DCPMM */
+    index_buf_ = data_mgr->createChunkBuffer(
+#ifdef HAVE_DCPMM
+      bd,
+#endif /* HAVE_DCPMM */
+      subKey, mem_level, device_id, page_size);
   } else {
-    buffer_ = data_mgr->createChunkBuffer(key, mem_level, device_id, page_size);
+    buffer_ = data_mgr->createChunkBuffer(
+#ifdef HAVE_DCPMM
+                                          bd,
+#endif /* HAVE_DCPMM */
+                                          key, mem_level, device_id, page_size);
   }
 }
 

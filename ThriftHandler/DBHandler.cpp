@@ -97,6 +97,9 @@
 #include <string>
 #include <thread>
 #include <typeinfo>
+#ifdef HAVE_DCPMM
+#include <atomic>
+#endif /* HAVE_DCPMM */
 
 #include <arrow/api.h>
 #include <arrow/io/api.h>
@@ -127,6 +130,10 @@ using Catalog_Namespace::SysCatalog;
 
 thread_local std::string TrackingProcessor::client_address;
 thread_local ClientProtocol TrackingProcessor::client_protocol;
+
+#ifdef HAVE_DCPMM
+std::atomic<unsigned long> qid(0ul);
+#endif /* HAVE_DCPMM */
 
 namespace {
 
@@ -5642,7 +5649,11 @@ std::vector<PushedDownFilterInfo> DBHandler::execute_rel_alg(
     const bool just_validate,
     const bool find_push_down_candidates,
     const ExplainInfo& explain_info,
+#ifdef HAVE_DCPMM
+    const std::optional<size_t> executor_index) {
+#else /* HAVE_DCPMM */
     const std::optional<size_t> executor_index) const {
+#endif /* HAVE_DCPMM */
   query_state::Timer timer = query_state_proxy.createTimer(__func__);
 
   VLOG(1) << "Table Schema Locks:\n" << lockmgr::TableSchemaLockMgr::instance();
@@ -5671,6 +5682,9 @@ std::vector<PushedDownFilterInfo> DBHandler::execute_rel_alg(
       explain_info.explain_optimized ? ExecutorExplainType::Optimized
                                      : ExecutorExplainType::Default,
       intel_jit_profile_};
+#ifdef HAVE_DCPMM
+  unsigned long query_id = qid++;
+#endif /* HAVE_DCPMM */
   auto validate_or_explain_query =
       explain_info.justExplain() || explain_info.justCalciteExplain() || just_validate;
   auto columnar_output_enabled = g_enable_columnar_output;
@@ -5697,7 +5711,11 @@ std::vector<PushedDownFilterInfo> DBHandler::execute_rel_alg(
                                   ->get_session_id()
                                   .empty(),
                          g_running_query_interrupt_freq,
-                         g_pending_query_interrupt_freq};
+                         g_pending_query_interrupt_freq
+#ifdef HAVE_DCPMM
+			                   , query_id
+#endif /* HAVE_DCPMM */
+                         };
   auto execution_time_ms = _return.getExecutionTime() + measure<>::execution([&]() {
                              _return = ra_executor.executeRelAlgQuery(
                                  co, eo, explain_info.explain_plan, nullptr);
@@ -5708,6 +5726,9 @@ std::vector<PushedDownFilterInfo> DBHandler::execute_rel_alg(
     execution_time_ms -= rs->getQueueTime();
   }
   _return.setExecutionTime(execution_time_ms);
+#ifdef HAVE_DCPMM
+  query_time[query_id] = _return.getExecutionTime();
+#endif /* HAVE_DCPMM */
   VLOG(1) << cat.getDataMgr().getSystemMemoryUsage();
   const auto& filter_push_down_info = _return.getPushedDownFilterInfo();
   if (!filter_push_down_info.empty()) {
@@ -5750,6 +5771,9 @@ void DBHandler::execute_rel_alg_df(TDataFrame& _return,
       /*filter_on_deleted_column=*/true,
       ExecutorExplainType::Default,
       intel_jit_profile_};
+#ifdef HAVE_DCPMM
+  unsigned long query_id = qid++;
+#endif /* HAVE_DCPMM */
   ExecutionOptions eo = {
       g_enable_columnar_output,
       allow_multifrag_,
@@ -5768,7 +5792,11 @@ void DBHandler::execute_rel_alg_df(TDataFrame& _return,
                                                ->get_session_id()
                                                .empty(),
       g_running_query_interrupt_freq,
-      g_pending_query_interrupt_freq};
+      g_pending_query_interrupt_freq
+#ifdef HAVE_DCPMM
+			, query_id
+#endif /* HAVE_DCPMM */
+      };
   if (query_hints.isHintRegistered(QueryHint::kColumnarOutput)) {
     eo.output_columnar_hint = true;
   } else if (query_hints.isHintRegistered(QueryHint::kRowwiseOutput)) {
@@ -6939,6 +6967,97 @@ void DBHandler::get_license_claims(TLicenseInfo& _return,
   auto stdlog = STDLOG(get_session_ptr(session));
   const auto session_info = get_session_copy(session);
   _return.claims.emplace_back("");
+}
+
+bool DBHandler::heat_column(const TSessionId& session,
+                            const std::string& table_name,
+                            const std::string& column_name) {
+#ifdef HAVE_DCPMM
+  auto session_info = get_session_copy(session);
+  auto& cat = session_info.getCatalog();
+  auto td = cat.getMetadataForTable(table_name, false);  // don't populate fragmenter on this call since we only want metadata
+  if (!td) {
+    THROW_MAPD_EXCEPTION("Table " + table_name + " doesn't exist");
+  }
+  try {
+    if (hasTableAccessPrivileges(td, session_info)) {
+      ColumnDescriptor *cd = (ColumnDescriptor *)(cat.getMetadataForColumn(td->tableId, column_name));
+      if (cd) {
+        cat.setColumnHot(td, cd);
+      }
+      else {
+        THROW_MAPD_EXCEPTION("Column " + column_name + " doesn't exist in table " + table_name);
+      }
+    } else {
+      THROW_MAPD_EXCEPTION("User has no access privileges to table " + table_name);
+    }
+  } catch (const std::runtime_error& e) {
+    THROW_MAPD_EXCEPTION(e.what());
+  }
+
+  return true;
+#else
+  return false;
+#endif /* HAVE_DCPMM */
+}
+
+bool DBHandler::cool_column(const TSessionId& session,
+                            const std::string& table_name,
+                            const std::string& column_name) {
+#ifdef HAVE_DCPMM
+  auto session_info = get_session_copy(session);
+  auto& cat = session_info.getCatalog();
+  auto td = cat.getMetadataForTable(table_name, false);  // don't populate fragmenter on this call since we only want metadata
+  if (!td) {
+    THROW_MAPD_EXCEPTION("Table " + table_name + " doesn't exist");
+  }
+  try {
+    if (hasTableAccessPrivileges(td, session_info)) {
+      ColumnDescriptor *cd = (ColumnDescriptor *)(cat.getMetadataForColumn(td->tableId, column_name));
+      if (cd) {
+        cat.setColumnCold(td, cd);
+      }
+      else {
+        THROW_MAPD_EXCEPTION("Column " + column_name + " doesn't exist in table " + table_name);
+      }
+    } else {
+      THROW_MAPD_EXCEPTION("User has no access privileges to table " + table_name);
+    }
+  } catch (const std::runtime_error& e) {
+    THROW_MAPD_EXCEPTION(e.what());
+  }
+  return true;
+#else
+  return false;
+#endif /* HAVE_DCPMM*/
+}
+
+void DBHandler::start_profiling(const TSessionId& session) {
+#ifdef HAVE_DCPMM
+  query_time.clear();
+  qid = 0;  //reset global query identifier
+  auto session_info = get_session_copy(session);
+  auto& cat = session_info.getCatalog();
+  cat.getDataMgr().startCollectingStatistics();
+#endif /* HAVE_DCPMM*/
+}
+
+void DBHandler::stop_profiling(const TSessionId& session) {
+#ifdef HAVE_DCPMM
+  auto session_info = get_session_copy(session);
+  auto& cat = session_info.getCatalog();
+  cat.getDataMgr().stopCollectingStatistics(query_time);
+#endif /* HAVE_DCPMM*/
+}
+
+int64_t DBHandler::estimate_dram_size(const TSessionId& session, const int32_t perf_bar) {
+#ifdef HAVE_DCPMM
+  auto session_info = get_session_copy(session);
+  auto& cat = session_info.getCatalog();
+  return cat.getDataMgr().estimateDramRecommended(perf_bar);
+#else
+  return 0;
+#endif /* HAVE_DCPMM*/
 }
 
 void DBHandler::shutdown() {

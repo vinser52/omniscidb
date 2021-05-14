@@ -35,7 +35,11 @@ void GpuHeteroBufferMgr::clearSlabs() {
   bufferFactory_.releaseMemory();
 }
 
-AbstractBuffer* GpuHeteroBufferMgr::constructBuffer(const size_t chunk_page_size,
+AbstractBuffer* GpuHeteroBufferMgr::constructBuffer(
+#ifdef HAVE_DCPMM
+                                                    BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                                    const size_t chunk_page_size,
                                                     const size_t initial_size) {
   return bufferFactory_.construct(device_id_, cuda_mgr_, chunk_page_size, initial_size);
 }

@@ -58,6 +58,9 @@ class PerfectJoinHashTable : public HashJoin {
       const JoinType join_type,
       const HashType preferred_hash_type,
       const int device_count,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       ColumnCacheMap& column_cache,
       Executor* executor);
 
@@ -111,6 +114,9 @@ class PerfectJoinHashTable : public HashJoin {
   ColumnsForDevice fetchColumnsForDevice(
       const std::vector<Fragmenter_Namespace::FragmentInfo>& fragments,
       const int device_id,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       DeviceAllocator* dev_buff_owner,
       const Catalog_Namespace::Catalog& catalog);
 
@@ -162,7 +168,11 @@ class PerfectJoinHashTable : public HashJoin {
       const Analyzer::Expr* outer_col,
       const Analyzer::ColumnVar* inner_col) const;
 
-  void reify();
+  void reify(
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo
+#endif /* HAVE_DCPMM */
+  );
   std::shared_ptr<PerfectHashTable> initHashTableOnCpuFromCache(const ChunkKey& chunk_key,
                                                                 const size_t num_elements,
                                                                 const InnerOuter& cols);

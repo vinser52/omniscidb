@@ -197,6 +197,9 @@ void ExecutionKernel::runImpl(Executor* executor,
                         ? executor->fetchUnionChunks(column_fetcher,
                                                      ra_exe_unit_,
                                                      chosen_device_id,
+#ifdef HAVE_DCPMM
+                                                     eo.query_id,
+#endif /* HAVE_DCPMM */
                                                      memory_level,
                                                      all_tables_fragments,
                                                      frag_list,
@@ -209,6 +212,9 @@ void ExecutionKernel::runImpl(Executor* executor,
                         : executor->fetchChunks(column_fetcher,
                                                 ra_exe_unit_,
                                                 chosen_device_id,
+#ifdef HAVE_DCPMM
+                                                eo.query_id,
+#endif /* HAVE_DCPMM */
                                                 memory_level,
                                                 all_tables_fragments,
                                                 frag_list,

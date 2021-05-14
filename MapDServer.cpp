@@ -336,8 +336,6 @@ void heartbeat() {
 
   // Stopping the Thrift thread(s) will allow main() to return.
   thrift_stop();
-  
-  shutdown_handler();
 }
 
 int startMapdServer(CommandLineOptions& prog_config_opts, bool start_http_server = true) {

@@ -37,6 +37,13 @@ enum ThriftService {
   kGET_COMPLETION_HINTS,
   kGET_DASHBOARDS,
   kGET_DASHBOARD
+#ifdef HAVE_DCPMM
+  , kHEAT_COLUMN,
+  kCOOL_COLUMN,
+  kDMSTATS,
+  kNODMSTATS,
+  kPREDICT_DRAM_SIZE
+#endif /* HAVE_DCPMM */
 };
 
 #endif

@@ -50,7 +50,11 @@ public:
 
 protected:
   using buffer_type = CpuHeteroBuffer;
-  AbstractBuffer* constructBuffer(const size_t chunk_page_size,
+  AbstractBuffer* constructBuffer(
+#ifdef HAVE_DCPMM
+                                  BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                  const size_t chunk_page_size,
                                   const size_t initial_size) override;
   void destroyBuffer(AbstractBuffer* buffer) override;
 private:

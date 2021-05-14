@@ -65,6 +65,9 @@ void ForeignStorageBufferMgr::checkpoint() {
 }
 
 Data_Namespace::AbstractBuffer* ForeignStorageBufferMgr::createBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
     const ChunkKey& key,
     const size_t pageSize,
     const size_t initialSize) {
@@ -77,6 +80,9 @@ Data_Namespace::AbstractBuffer* ForeignStorageBufferMgr::createBuffer(
 }
 
 Data_Namespace::AbstractBuffer* ForeignStorageBufferMgr::getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
     const ChunkKey& key,
     const size_t numBytes) {
   mapd_shared_lock<mapd_shared_mutex> chunk_index_write_lock(chunk_index_mutex_);
@@ -89,7 +95,11 @@ void ForeignStorageBufferMgr::fetchBuffer(const ChunkKey& key,
                                           Data_Namespace::AbstractBuffer* destBuffer,
                                           const size_t numBytes) {
   CHECK(numBytes);
-  auto file_buffer = dynamic_cast<ForeignStorageBuffer*>(getBuffer(key, numBytes));
+  auto file_buffer = dynamic_cast<ForeignStorageBuffer*>(getBuffer(
+#ifdef HAVE_DCPMM
+                                                                   BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                                                   key, numBytes));
   CHECK(file_buffer);
 
   // TODO: check if GPU is used

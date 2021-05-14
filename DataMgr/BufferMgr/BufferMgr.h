@@ -126,7 +126,11 @@ class BufferMgr : public AbstractBufferMgr {  // implements
   const std::vector<BufferList>& getSlabSegments();
 
   /// Creates a chunk with the specified key and page size.
-  AbstractBuffer* createBuffer(const ChunkKey& key,
+  AbstractBuffer* createBuffer(
+#ifdef HAVE_DCPMM
+                               BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                               const ChunkKey& key,
                                const size_t page_size = 0,
                                const size_t initial_size = 0) override;
 
@@ -136,7 +140,11 @@ class BufferMgr : public AbstractBufferMgr {  // implements
                                const bool purge = true) override;
 
   /// Returns the a pointer to the chunk with the specified key.
-  AbstractBuffer* getBuffer(const ChunkKey& key, const size_t num_bytes = 0) override;
+  AbstractBuffer* getBuffer(
+#ifdef HAVE_DCPMM
+                            BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                            const ChunkKey& key, const size_t num_bytes = 0) override;
 
   /**
    * @brief Puts the contents of d into the Buffer with ChunkKey key.

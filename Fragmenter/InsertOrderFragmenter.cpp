@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2020 OmniSci, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -312,6 +312,10 @@ void InsertOrderFragmenter::updateChunkStats(
                                              chunk_key,
                                              memory_level.value_or(defaultInsertLevel_),
                                              0,
+#ifdef HAVE_DCPMM
+                                             //TODO: get real query_id
+                                             0,
+#endif /* HAVE_DCPMM */
                                              chunk_meta_it->second->numBytes,
                                              chunk_meta_it->second->numElements);
       auto buf = chunk->getBuffer();

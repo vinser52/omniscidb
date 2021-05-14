@@ -150,6 +150,9 @@ std::shared_ptr<PerfectJoinHashTable> PerfectJoinHashTable::getInstance(
     const JoinType join_type,
     const HashType preferred_hash_type,
     const int device_count,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     ColumnCacheMap& column_cache,
     Executor* executor) {
   decltype(std::chrono::steady_clock::now()) ts1, ts2;
@@ -220,7 +223,11 @@ std::shared_ptr<PerfectJoinHashTable> PerfectJoinHashTable::getInstance(
                                                                      executor,
                                                                      device_count));
   try {
-    join_hash_table->reify();
+    join_hash_table->reify(
+#ifdef HAVE_DCPMM
+      eo
+#endif /* HAVE_DCPMM */
+    );
   } catch (const TableMustBeReplicated& e) {
     // Throw a runtime error to abort the query
     join_hash_table->freeHashBufferMemory();
@@ -300,7 +307,11 @@ std::vector<Fragmenter_Namespace::FragmentInfo> only_shards_for_device(
   return shards_for_device;
 }
 
-void PerfectJoinHashTable::reify() {
+void PerfectJoinHashTable::reify(
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo
+#endif /* HAVE_DCPMM */
+) {
   auto timer = DEBUG_TIMER(__func__);
   CHECK_LT(0, device_count_);
   auto catalog = const_cast<Catalog_Namespace::Catalog*>(executor_->getCatalog());
@@ -343,6 +354,9 @@ void PerfectJoinHashTable::reify() {
       const auto columns_for_device =
           fetchColumnsForDevice(fragments,
                                 device_id,
+#ifdef HAVE_DCPMM
+                                eo,
+#endif /* HAVE_DCPMM */
                                 memory_level_ == Data_Namespace::MemoryLevel::GPU_LEVEL
                                     ? dev_buff_owners[device_id].get()
                                     : nullptr,
@@ -413,6 +427,9 @@ Data_Namespace::MemoryLevel PerfectJoinHashTable::getEffectiveMemoryLevel(
 ColumnsForDevice PerfectJoinHashTable::fetchColumnsForDevice(
     const std::vector<Fragmenter_Namespace::FragmentInfo>& fragments,
     const int device_id,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     DeviceAllocator* dev_buff_owner,
     const Catalog_Namespace::Catalog& catalog) {
   const auto effective_memory_level = getEffectiveMemoryLevel(inner_outer_pairs_);
@@ -433,6 +450,9 @@ ColumnsForDevice PerfectJoinHashTable::fetchColumnsForDevice(
                                               fragments,
                                               effective_memory_level,
                                               device_id,
+#ifdef HAVE_DCPMM
+					                                    eo,
+#endif /* HAVE_DCPMM */
                                               chunks_owner,
                                               dev_buff_owner,
                                               malloc_owner,

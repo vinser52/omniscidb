@@ -37,8 +37,23 @@ HeteroBufferMgr::~HeteroBufferMgr() {
   // clear() should be called from the derived class destructor
 }
 
+#ifdef HAVE_DCPMM
+static MemRequirements get_mem_characteristics(BufferProperty bufProp) {
+  switch (bufProp) {
+    case HIGH_BDWTH:
+      return MemRequirements::HIGH_BDWTH;
+    case LOW_LATENCY:
+      return MemRequirements::LOW_LATENCY;
+  }
+  return MemRequirements::CAPACITY;
+}
+#endif /* HAVE_DCPMM */
 /// Throws a runtime_error if the Chunk already exists
-AbstractBuffer* HeteroBufferMgr::createBuffer(const ChunkKey& chunk_key,
+AbstractBuffer* HeteroBufferMgr::createBuffer(
+#ifdef HAVE_DCPMM
+                                              BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                              const ChunkKey& chunk_key,
                                               const size_t chunk_page_size,
                                               const size_t initial_size) {
   size_t actual_chunk_page_size = chunk_page_size;
@@ -50,10 +65,18 @@ AbstractBuffer* HeteroBufferMgr::createBuffer(const ChunkKey& chunk_key,
 
   AbstractBuffer* buffer = nullptr;
   try {
-    buffer = constructBuffer(chunk_page_size, initial_size);
+    buffer = constructBuffer(
+#ifdef HAVE_DCPMM
+                             bufProp,
+#endif /* HAVE_DCPMM */
+                             chunk_page_size, initial_size);
   } catch (const std::bad_alloc& e) {
     this->clearSlabsUnlocked();
-    buffer = constructBuffer(chunk_page_size, initial_size);
+    buffer = constructBuffer(
+#ifdef HAVE_DCPMM
+                             bufProp,
+#endif /* HAVE_DCPMM */
+                             chunk_page_size, initial_size);
   }
 
   CHECK(buffer != nullptr);
@@ -87,7 +110,11 @@ void HeteroBufferMgr::deleteBuffersWithPrefix(const ChunkKey& keyPrefix, const b
   removeUnpinnedBuffers(first, last);
 }
 
-AbstractBuffer* HeteroBufferMgr::getBuffer(const ChunkKey& key, const size_t numBytes) {
+AbstractBuffer* HeteroBufferMgr::getBuffer(
+#ifdef HAVE_DCPMM
+                                           BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                                           const ChunkKey& key, const size_t numBytes) {
   std::lock_guard<global_mutex_type> lock(global_mutex_);  // granular lock
   std::unique_lock<chunk_index_mutex_type> index_lock(chunk_index_mutex_);
   auto chunk_it = chunk_index_.find(key);
@@ -107,7 +134,11 @@ AbstractBuffer* HeteroBufferMgr::getBuffer(const ChunkKey& key, const size_t num
     return buffer;
   } else {
     index_lock.unlock();
-    AbstractBuffer* buffer = createBuffer(key, page_size_, numBytes);
+    AbstractBuffer* buffer = createBuffer(
+#ifdef HAVE_DCPMM
+                                          bufProp,
+#endif /* HAVE_DCPMM */
+                                          key, page_size_, numBytes);
     try {
       parent_mgr_->fetchBuffer(
           key, buffer, numBytes);
@@ -127,7 +158,11 @@ AbstractBuffer* HeteroBufferMgr::getBuffer(const ChunkKey& key, const size_t num
 void HeteroBufferMgr::fetchBuffer(const ChunkKey& key,
                                      AbstractBuffer* destBuffer,
                                      const size_t numBytes) {
-  AbstractBuffer* buffer = getBuffer(key, numBytes);
+  AbstractBuffer* buffer = getBuffer(
+#ifdef HAVE_DCPMM
+                                     BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                                     key, numBytes);
   size_t chunk_size = numBytes == 0 ? buffer->size() : numBytes;
 
   destBuffer->reserve(chunk_size);
@@ -158,7 +193,11 @@ AbstractBuffer* HeteroBufferMgr::putBuffer(const ChunkKey& key,
   index_lock.unlock();
   AbstractBuffer* buffer;
   if (!found_buffer) {
-    buffer = createBuffer(key, page_size_);
+    buffer = createBuffer(
+#ifdef HAVE_DCPMM
+                          BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                          key, page_size_);
   } else {
     buffer = buffer_it->second;
   }
@@ -292,7 +331,11 @@ AbstractBuffer* HeteroBufferMgr::alloc(const size_t num_bytes) {
   ChunkKey chunk_key = {-1, max_buffer_id_++};
   std::lock_guard<std::mutex> lock(global_mutex_);
   // TODO: Should we require CAPACITY or LOW_LATENCY or HIGH_BDWTH
-  return createBuffer(chunk_key, page_size_, num_bytes);
+  return createBuffer(
+#ifdef HAVE_DCPMM
+                      BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+                      chunk_key, page_size_, num_bytes);
 }
 
 void HeteroBufferMgr::free(AbstractBuffer* buffer) {

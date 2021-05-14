@@ -42,6 +42,9 @@ std::shared_ptr<BaselineJoinHashTable> BaselineJoinHashTable::getInstance(
     const JoinType join_type,
     const HashType preferred_hash_type,
     const int device_count,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     ColumnCacheMap& column_cache,
     Executor* executor) {
   decltype(std::chrono::steady_clock::now()) ts1, ts2;
@@ -64,7 +67,11 @@ std::shared_ptr<BaselineJoinHashTable> BaselineJoinHashTable::getInstance(
                                                                        inner_outer_pairs,
                                                                        device_count));
   try {
-    join_hash_table->reify(preferred_hash_type);
+    join_hash_table->reify(
+#ifdef HAVE_DCPMM
+            eo,
+#endif /* HAVE_DCPMM */
+            preferred_hash_type);
   } catch (const TableMustBeReplicated& e) {
     // Throw a runtime error to abort the query
     join_hash_table->freeHashBufferMemory();
@@ -211,7 +218,11 @@ std::set<DecodedJoinHashBufferEntry> BaselineJoinHashTable::toSet(
                           buffer_size);
 }
 
-void BaselineJoinHashTable::reify(const HashType preferred_layout) {
+void BaselineJoinHashTable::reify(
+#ifdef HAVE_DCPMM
+  const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
+  const HashType preferred_layout) {
   auto timer = DEBUG_TIMER(__func__);
   CHECK_LT(0, device_count_);
   const auto composite_key_info =
@@ -235,7 +246,11 @@ void BaselineJoinHashTable::reify(const HashType preferred_layout) {
       layout = HashType::OneToMany;
     }
     try {
-      reifyWithLayout(layout);
+      reifyWithLayout(
+#ifdef HAVE_DCPMM
+        eo,
+#endif /* HAVE_DCPMM */
+        layout);
       return;
     } catch (const std::exception& e) {
       VLOG(1) << "Caught exception while building overlaps baseline hash table: "
@@ -245,16 +260,28 @@ void BaselineJoinHashTable::reify(const HashType preferred_layout) {
   }
 
   try {
-    reifyWithLayout(layout);
+    reifyWithLayout(
+#ifdef HAVE_DCPMM
+      eo,
+#endif /* HAVE_DCPMM */
+      layout);
   } catch (const std::exception& e) {
     VLOG(1) << "Caught exception while building baseline hash table: " << e.what();
     freeHashBufferMemory();
     HashTypeCache::set(composite_key_info.cache_key_chunks, HashType::OneToMany);
-    reifyWithLayout(HashType::OneToMany);
+    reifyWithLayout(
+#ifdef HAVE_DCPMM
+            eo,
+#endif /* HAVE_DCPMM */
+            HashType::OneToMany);
   }
 }
 
-void BaselineJoinHashTable::reifyWithLayout(const HashType layout) {
+void BaselineJoinHashTable::reifyWithLayout(
+#ifdef HAVE_DCPMM
+  const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
+  const HashType layout) {
   const auto& query_info = get_inner_query_info(getInnerTableId(), query_infos_).info;
   if (query_info.fragments.empty()) {
     return;
@@ -285,6 +312,9 @@ void BaselineJoinHashTable::reifyWithLayout(const HashType layout) {
     const auto columns_for_device =
         fetchColumnsForDevice(fragments,
                               device_id,
+#ifdef HAVE_DCPMM
+                              eo,
+#endif /* HAVE_DCPMM */
                               memory_level_ == Data_Namespace::MemoryLevel::GPU_LEVEL
                                   ? dev_buff_owners[device_id].get()
                                   : nullptr);
@@ -442,6 +472,9 @@ std::pair<size_t, size_t> BaselineJoinHashTable::approximateTupleCount(
 ColumnsForDevice BaselineJoinHashTable::fetchColumnsForDevice(
     const std::vector<Fragmenter_Namespace::FragmentInfo>& fragments,
     const int device_id,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     DeviceAllocator* dev_buff_owner) {
   const auto effective_memory_level = getEffectiveMemoryLevel(inner_outer_pairs_);
 
@@ -461,6 +494,9 @@ ColumnsForDevice BaselineJoinHashTable::fetchColumnsForDevice(
                                               fragments,
                                               effective_memory_level,
                                               device_id,
+#ifdef HAVE_DCPMM
+					                                    eo,
+#endif /* HAVE_DCPMM */
                                               chunks_owner,
                                               dev_buff_owner,
                                               malloc_owner,

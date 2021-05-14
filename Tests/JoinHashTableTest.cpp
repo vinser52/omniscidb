@@ -106,6 +106,9 @@ std::shared_ptr<HashJoin> buildPerfect(std::string_view table1,
                                         memory_level,
                                         HashType::OneToOne,
                                         device_count,
+#ifdef HAVE_DCPMM
+                                        ExecutionOptions::defaults(),
+#endif /* HAVE_DCPMM */
                                         column_cache,
                                         executor.get());
 }
@@ -127,7 +130,11 @@ std::shared_ptr<HashJoin> buildKeyed(std::shared_ptr<Analyzer::BinOper> op) {
   ColumnCacheMap column_cache;
 
   return HashJoin::getSyntheticInstance(
-      op, memory_level, HashType::OneToOne, device_count, column_cache, executor.get());
+      op, memory_level, HashType::OneToOne, device_count,
+#ifdef HAVE_DCPMM
+      ExecutionOptions::defaults(),
+#endif /* HAVE_DCPMM */
+      column_cache, executor.get());
 }
 
 TEST(Build, PerfectOneToOne1) {
@@ -510,6 +517,9 @@ TEST(Build, GeoOneToMany1) {
                                                      memory_level,
                                                      HashType::OneToMany,
                                                      device_count,
+#ifdef HAVE_DCPMM
+                                                     ExecutionOptions::defaults(),
+#endif /* HAVE_DCPMM */
                                                      column_cache,
                                                      executor.get());
 
@@ -578,6 +588,9 @@ TEST(Build, GeoOneToMany2) {
                                                      memory_level,
                                                      HashType::OneToMany,
                                                      device_count,
+#ifdef HAVE_DCPMM
+                                                     ExecutionOptions::defaults(),
+#endif /* HAVE_DCPMM */
                                                      column_cache,
                                                      executor.get());
 

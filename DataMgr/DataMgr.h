@@ -157,6 +157,23 @@ class ProcBuddyinfoParser {
   auto getInputText() { return inputText_; }
 };
 
+#ifdef HAVE_DCPMM
+struct BufferDescriptor {
+  enum Hotness {
+    Cold,
+    SoftHot,
+    Hot
+  };
+
+  Hotness hotness_;
+  bool isIndex;
+
+  static BufferDescriptor defaults() {
+    return BufferDescriptor{Cold, false};
+  }
+};
+#endif /* HAVE_DCPMM */
+
 class DataMgr {
   friend class GlobalFileMgr;
 
@@ -173,11 +190,27 @@ class DataMgr {
       const File_Namespace::DiskCacheConfig cacheConfig =
           File_Namespace::DiskCacheConfig());
   ~DataMgr();
-  AbstractBuffer* createChunkBuffer(const ChunkKey& key,
+  AbstractBuffer* createChunkBuffer(
+#ifdef HAVE_DCPMM
+                                    BufferDescriptor bd,
+#endif /* HAVE_DCPMM */
+                                    const ChunkKey& key,
                                     const MemoryLevel memoryLevel,
                                     const int deviceId = 0,
                                     const size_t page_size = 0);
-  AbstractBuffer* getChunkBuffer(const ChunkKey& key,
+#ifdef HAVE_DCPMM
+  AbstractBuffer* getChunkBuffer(BufferDescriptor bd,
+                                 const ChunkKey& key,
+                                 const MemoryLevel memoryLevel,
+                                 const unsigned long query_id,
+                                 const int deviceId,
+                                 const size_t numBytes);
+#endif /* HAVE_DCPMM */
+  AbstractBuffer* getChunkBuffer(
+#ifdef HAVE_DCPMM
+                                 BufferDescriptor bd,
+#endif /* HAVE_DCPMM */
+                                 const ChunkKey& key,
                                  const MemoryLevel memoryLevel,
                                  const int deviceId = 0,
                                  const size_t numBytes = 0);
@@ -211,6 +244,13 @@ class DataMgr {
   File_Namespace::GlobalFileMgr* getGlobalFileMgr() const;
   std::shared_ptr<ForeignStorageInterface> getForeignStorageInterface() const;
 
+#ifdef HAVE_DCPMM
+  int getProfileScaleFactor(void) { return profSF_; }
+  size_t getPeakVmSize(void);
+  void startCollectingStatistics(void);
+  void stopCollectingStatistics(std::map<unsigned long, long>& _query_time);
+  size_t estimateDramRecommended(int percentDramPerf);
+#endif /* HAVE_DCPMM */
   inline bool pmmPresent(void) { return hasPmm_; }
   // database_id, table_id, column_id, fragment_id
   std::vector<int> levelSizes_;
@@ -249,6 +289,13 @@ class DataMgr {
   bool hasGpus_;
   size_t reservedGpuMem_;
   std::mutex buffer_access_mutex_;
+#ifdef HAVE_DCPMM
+  int profSF_;
+  std::map<unsigned long, std::map<ChunkKey, size_t>> chunkFetchStats_; // how many times each chunk fetched in each query
+  std::map<unsigned long, std::map<ChunkKey, size_t>> chunkFetchDataSizeStats_; // how much data of each chunk fetched in each query
+  std::mutex chunkFetchStatsMutex_;
+  bool statisticsOn_;
+#endif /* HAVE_DCPMM */
 };
 
 std::ostream& operator<<(std::ostream& os, const DataMgr::SystemMemoryUsage&);

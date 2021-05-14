@@ -2641,6 +2641,9 @@ std::shared_ptr<ResultSet> getResultSet(QueryStateProxy query_state_proxy,
                          allow_interrupt,
                          g_running_query_interrupt_freq,
                          g_pending_query_interrupt_freq,
+#ifdef HAVE_DCPMM
+                         0, // TODO: get the real query_id?
+#endif /* HAVE_DCPMM */
                          ExecutorType::Native,
                          outer_fragment_indices};
   // we can skip to check rowwise query hint since we assume false by default in this eo

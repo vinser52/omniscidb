@@ -470,7 +470,11 @@ void FileMgr::init(const std::string& dataPathToConvertFrom,
               dynamic_cast<File_Namespace::FileMgr*>(gfm_->getFileMgr(lastChunkKey));
           CHECK(c_fm_);
           auto srcBuf = createBufferFromHeaders(lastChunkKey, startIt, headerIt);
-          auto destBuf = c_fm_->createBuffer(lastChunkKey, srcBuf->pageSize());
+          auto destBuf = c_fm_->createBuffer(
+#ifdef HAVE_DCPMM
+            BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+            lastChunkKey, srcBuf->pageSize());
           destBuf->syncEncoder(srcBuf);
           destBuf->setSize(srcBuf->size());
           destBuf->setDirty();  // this needs to be set to force writing out metadata
@@ -499,7 +503,11 @@ void FileMgr::init(const std::string& dataPathToConvertFrom,
       FileMgr* c_fm_ =
           dynamic_cast<File_Namespace::FileMgr*>(gfm_->getFileMgr(lastChunkKey));
       auto srcBuf = createBufferFromHeaders(lastChunkKey, startIt, headerVec.end());
-      auto destBuf = c_fm_->createBuffer(lastChunkKey, srcBuf->pageSize());
+      auto destBuf = c_fm_->createBuffer(
+#ifdef HAVE_DCPMM
+        BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+        lastChunkKey, srcBuf->pageSize());
       destBuf->syncEncoder(srcBuf);
       destBuf->setSize(srcBuf->size());
       destBuf->setDirty();  // this needs to be set to write out metadata file from the
@@ -685,7 +693,11 @@ void FileMgr::checkpoint() {
   freePages();
 }
 
-FileBuffer* FileMgr::createBuffer(const ChunkKey& key,
+FileBuffer* FileMgr::createBuffer(
+#ifdef HAVE_DCPMM
+                                  BufferProperty buf_prop,
+#endif /* HAVE_DCPMM */
+                                  const ChunkKey& key,
                                   const size_t page_size,
                                   const size_t num_bytes) {
   mapd_unique_lock<mapd_shared_mutex> chunkIndexWriteLock(chunkIndexMutex_);
@@ -755,7 +767,11 @@ void FileMgr::deleteBuffersWithPrefix(const ChunkKey& keyPrefix, const bool purg
   }
 }
 
-FileBuffer* FileMgr::getBuffer(const ChunkKey& key, const size_t num_bytes) {
+FileBuffer* FileMgr::getBuffer(
+#ifdef HAVE_DCPMM
+                               BufferProperty buf_prop,
+#endif /* HAVE_DCPMM */
+                               const ChunkKey& key, const size_t num_bytes) {
   mapd_shared_lock<mapd_shared_mutex> chunk_index_read_lock(chunkIndexMutex_);
   auto chunk_it = chunkIndex_.find(key);
   return getBufferUnlocked(chunk_it, num_bytes);
@@ -776,7 +792,11 @@ void FileMgr::fetchBuffer(const ChunkKey& key,
   CHECK(!destBuffer->isDirty())
       << "Aborting attempt to fetch a chunk marked dirty. Chunk inconsistency for key: "
       << show_chunk(key);
-  AbstractBuffer* chunk = getBuffer(key);
+  AbstractBuffer* chunk = getBuffer(
+#ifdef HAVE_DCPMM
+    BufferProperty::CAPACITY,
+#endif /* HAVE_DCPMM */
+    key);
   // chunk's size is either specified in function call with numBytes or we
   // just look at pageSize * numPages in FileBuffer
   if (numBytes > 0 && numBytes > chunk->size()) {

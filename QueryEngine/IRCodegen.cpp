@@ -310,12 +310,19 @@ std::vector<JoinLoop> Executor::buildJoinLoops(
           JoinCondition join_condition{{first_qual}, current_level_join_conditions.type};
 
           return buildCurrentLevelHashTable(
-              join_condition, ra_exe_unit, co, query_infos, column_cache, fail_reasons);
+              join_condition, ra_exe_unit, co,
+#ifdef HAVE_DCPMM
+              eo,
+#endif /* HAVE_DCPMM */
+              query_infos, column_cache, fail_reasons);
         }
       }
       return buildCurrentLevelHashTable(current_level_join_conditions,
                                         ra_exe_unit,
                                         co,
+#ifdef HAVE_DCPMM
+                                        eo,
+#endif /* HAVE_DCPMM */
                                         query_infos,
                                         column_cache,
                                         fail_reasons);
@@ -670,6 +677,9 @@ std::shared_ptr<HashJoin> Executor::buildCurrentLevelHashTable(
     const JoinCondition& current_level_join_conditions,
     RelAlgExecutionUnit& ra_exe_unit,
     const CompilationOptions& co,
+#ifdef HAVE_DCPMM
+    const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
     const std::vector<InputTableInfo>& query_infos,
     ColumnCacheMap& column_cache,
     std::vector<std::string>& fail_reasons) {
@@ -702,6 +712,9 @@ std::shared_ptr<HashJoin> Executor::buildCurrentLevelHashTable(
           co.device_type == ExecutorDeviceType::GPU ? MemoryLevel::GPU_LEVEL
                                                     : MemoryLevel::CPU_LEVEL,
           current_level_join_conditions.type,
+#ifdef HAVE_DCPMM
+          eo,
+#endif /* HAVE_DCPMM */
           HashType::OneToOne,
           column_cache,
           ra_exe_unit.query_hint);

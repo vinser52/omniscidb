@@ -656,6 +656,9 @@ class OverlapsJoinHashTableMock : public OverlapsJoinHashTable {
       ColumnCacheMap& column_cache,
       Executor* executor,
       const int device_count,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       const RegisteredQueryHint& query_hint,
       const std::vector<OverlapsJoinHashTableMock::ExpectedValues>& expected_values) {
     auto hash_join = std::make_shared<OverlapsJoinHashTableMock>(condition,
@@ -666,7 +669,11 @@ class OverlapsJoinHashTableMock : public OverlapsJoinHashTable {
                                                                  device_count,
                                                                  expected_values);
     hash_join->registerQueryHint(query_hint);
-    hash_join->reifyWithLayout(HashType::OneToMany);
+    hash_join->reifyWithLayout(
+#ifdef HAVE_DCPMM
+        eo,
+#endif /* HAVE_DCPMM */
+      HashType::OneToMany);
     return hash_join;
   }
 
@@ -832,6 +839,9 @@ TEST_F(BucketSizeTest, OverlapsTunerEarlyOut) {
                                              column_cache,
                                              executor.get(),
                                              /*device_count=*/1,
+#ifdef HAVE_DCPMM
+                                             ExecutionOptions::defaults(),
+#endif /* HAVE_DCPMM */
                                              RegisteredQueryHint::defaults(),
                                              expected_values);
   CHECK(hash_table);
@@ -865,6 +875,9 @@ TEST_F(BucketSizeTest, OverlapsTooBig) {
                                              column_cache,
                                              executor.get(),
                                              /*device_count=*/1,
+#ifdef HAVE_DCPMM
+                                             ExecutionOptions::defaults(),
+#endif /* HAVE_DCPMM */
                                              hint,
                                              expected_values));
 }

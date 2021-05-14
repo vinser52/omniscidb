@@ -418,18 +418,30 @@ void ArrowForeignStorageBase::parseArrowTable(Catalog_Namespace::Catalog* catalo
               auto k = key;
               k.push_back(1);
               {
+#ifdef HAVE_DCPMM                
+                auto b = mgr->createBuffer(BufferProperty::CAPACITY, k);
+#else
                 auto b = mgr->createBuffer(k);
+#endif /* HAVE_DCPMM */
                 b->setSize(varlen);
                 b->initEncoder(c.columnType);
               }
               k[4] = 2;
               {
+#ifdef HAVE_DCPMM                
+                auto b = mgr->createBuffer(BufferProperty::CAPACITY, k);
+#else
                 auto b = mgr->createBuffer(k);
+#endif /* HAVE_DCPMM */
                 b->setSqlType(SQLTypeInfo(kINT, false));
                 b->setSize(frag.sz * b->getSqlType().get_size());
               }
             } else {
+#ifdef HAVE_DCPMM                
+              auto b = mgr->createBuffer(BufferProperty::CAPACITY, key);
+#else
               auto b = mgr->createBuffer(key);
+#endif /* HAVE_DCPMM */
               b->setSize(frag.sz * c.columnType.get_size());
               b->initEncoder(c.columnType);
               if (!empty) {

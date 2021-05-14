@@ -172,7 +172,11 @@ class FileMgr : public AbstractBufferMgr {  // implements
 
   StorageStats getStorageStats();
   /// Creates a chunk with the specified key and page size.
-  FileBuffer* createBuffer(const ChunkKey& key,
+  FileBuffer* createBuffer(
+#ifdef HAVE_DCPMM
+                           BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                           const ChunkKey& key,
                            size_t pageSize = 0,
                            const size_t numBytes = 0) override;
 
@@ -186,7 +190,11 @@ class FileMgr : public AbstractBufferMgr {  // implements
                                const bool purge = true) override;
 
   /// Returns the a pointer to the chunk with the specified key.
-  FileBuffer* getBuffer(const ChunkKey& key, const size_t numBytes = 0) override;
+  FileBuffer* getBuffer(
+#ifdef HAVE_DCPMM
+                        BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                        const ChunkKey& key, const size_t numBytes = 0) override;
 
   void fetchBuffer(const ChunkKey& key,
                    AbstractBuffer* destBuffer,

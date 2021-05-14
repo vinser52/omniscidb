@@ -51,14 +51,21 @@ class MockForeignDataWrapper : public ForeignDataWrapper {
 class ForeignStorageMgr : public AbstractBufferMgr {
  public:
   ForeignStorageMgr();
-
-  AbstractBuffer* createBuffer(const ChunkKey& chunk_key,
+  AbstractBuffer* createBuffer(
+#ifdef HAVE_DCPMM
+                               BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                               const ChunkKey& chunk_key,
                                const size_t page_size,
                                const size_t initial_size) override;
   void deleteBuffer(const ChunkKey& chunk_key, const bool purge) override;
   void deleteBuffersWithPrefix(const ChunkKey& chunk_key_prefix,
                                const bool purge) override;
-  AbstractBuffer* getBuffer(const ChunkKey& chunk_key, const size_t num_bytes) override;
+  AbstractBuffer* getBuffer(
+#ifdef HAVE_DCPMM
+                            BufferProperty bufProp,
+#endif /* HAVE_DCPMM */
+                            const ChunkKey& chunk_key, const size_t num_bytes) override;
   void fetchBuffer(const ChunkKey& chunk_key,
                    AbstractBuffer* destination_buffer,
                    const size_t num_bytes) override;

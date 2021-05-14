@@ -225,6 +225,9 @@ class RelAlgExecutor : private StorageIOFacility {
       const RelAlgExecutionUnit& ra_exe_unit,
       const std::vector<InputTableInfo>& query_infos,
       const CompilationOptions& co,
+#ifdef HAVE_DCPMM
+      const ExecutionOptions& eo,
+#endif /* HAVE_DCPMM */
       ColumnCacheMap& column_cache_map,
       std::shared_ptr<RowSetMemoryOwner> row_set_mem_owner);
 

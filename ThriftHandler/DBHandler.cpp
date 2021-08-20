@@ -2755,6 +2755,7 @@ void DBHandler::get_memory(std::vector<TNodeMemoryInfo>& _return,
     if (leaf_aggregator_.leafCount() > 0) {
       nodeInfo.host_name = omnisci::get_hostname();
     }
+    nodeInfo.mem_layer = memInfo.mem_layer;
     nodeInfo.page_size = memInfo.pageSize;
     nodeInfo.max_num_pages = memInfo.maxNumPages;
     nodeInfo.num_pages_allocated = memInfo.numPageAllocated;

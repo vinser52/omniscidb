@@ -292,6 +292,7 @@ struct TNodeMemoryInfo {
   4: i64 num_pages_allocated;
   5: bool is_allocation_capped;
   6: list<TMemoryData> node_memory_data;
+  7: string mem_layer;
 }
 
 struct TTableMeta {

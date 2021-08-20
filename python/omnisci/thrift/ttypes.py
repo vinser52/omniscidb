@@ -3132,17 +3132,19 @@ class TNodeMemoryInfo(object):
      - num_pages_allocated
      - is_allocation_capped
      - node_memory_data
+     - mem_layer
 
     """
 
 
-    def __init__(self, host_name=None, page_size=None, max_num_pages=None, num_pages_allocated=None, is_allocation_capped=None, node_memory_data=None,):
+    def __init__(self, host_name=None, page_size=None, max_num_pages=None, num_pages_allocated=None, is_allocation_capped=None, node_memory_data=None, mem_layer=None,):
         self.host_name = host_name
         self.page_size = page_size
         self.max_num_pages = max_num_pages
         self.num_pages_allocated = num_pages_allocated
         self.is_allocation_capped = is_allocation_capped
         self.node_memory_data = node_memory_data
+        self.mem_layer = mem_layer
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -3189,6 +3191,11 @@ class TNodeMemoryInfo(object):
                     iprot.readListEnd()
                 else:
                     iprot.skip(ftype)
+            elif fid == 7:
+                if ftype == TType.STRING:
+                    self.mem_layer = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -3225,6 +3232,10 @@ class TNodeMemoryInfo(object):
             for iter125 in self.node_memory_data:
                 iter125.write(oprot)
             oprot.writeListEnd()
+            oprot.writeFieldEnd()
+        if self.mem_layer is not None:
+            oprot.writeFieldBegin('mem_layer', TType.STRING, 7)
+            oprot.writeString(self.mem_layer.encode('utf-8') if sys.version_info[0] == 2 else self.mem_layer)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()

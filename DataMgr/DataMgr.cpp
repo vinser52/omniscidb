@@ -591,6 +591,19 @@ void DataMgr::createTopLevelMetadata()
   }
 }
 
+static std::string convertMemTypeToStr(Buffer_Namespace::MemType mem_type){
+  switch (mem_type)
+  {
+  case Buffer_Namespace::MemType::DRAM:
+    return "DRAM";
+  case Buffer_Namespace::MemType::PMEM:
+    return "PMEM";
+  case Buffer_Namespace::MemType::HBM:
+    return "HBM";
+  }
+  return "UNKNOWN";
+}
+
 std::vector<MemoryInfo> DataMgr::getMemoryInfo(const MemoryLevel memLevel) {
   std::lock_guard<std::mutex> buffer_lock(buffer_access_mutex_);
 
@@ -600,31 +613,27 @@ std::vector<MemoryInfo> DataMgr::getMemoryInfo(const MemoryLevel memLevel) {
         dynamic_cast<Buffer_Namespace::CpuHeteroBufferMgr*>(
             bufferMgrs_[MemoryLevel::CPU_LEVEL][0]);
     CHECK(cpu_buffer);
-    MemoryInfo mi;
-
-    mi.pageSize = cpu_buffer->getPageSize();
-    mi.maxNumPages = cpu_buffer->getMaxSize() / mi.pageSize;
-    mi.isAllocationCapped = cpu_buffer->isAllocationCapped();
-    mi.numPageAllocated = cpu_buffer->getAllocated() / mi.pageSize;
-
-    // TODO: ? buffers do not use slabs anymore
-#if 0
-    const auto& slab_segments = cpu_buffer->getSlabSegments();
-    for (size_t slab_num = 0; slab_num < slab_segments.size(); ++slab_num) {
-      for (auto segment : slab_segments[slab_num]) {
-        MemoryData md;
-        md.slabNum = slab_num;
-        md.startPage = segment.start_page;
-        md.numPages = segment.num_pages;
-        md.touch = segment.last_touched;
-        md.memStatus = segment.mem_status;
-        md.chunk_key.insert(
-            md.chunk_key.end(), segment.chunk_key.begin(), segment.chunk_key.end());
-        mi.nodeMemoryData.push_back(md);
+    for (auto mem_layer = cpu_buffer->memory_layers_begin(); mem_layer != cpu_buffer->memory_layers_end(); ++mem_layer){
+      MemoryInfo mi;
+      mi.mem_layer = convertMemTypeToStr(mem_layer->getMemType());
+      mi.pageSize = mem_layer->getPageSize();
+      mi.maxNumPages = mem_layer->getMaxSize() / mi.pageSize;
+      mi.isAllocationCapped = mem_layer->isAllocationCapped();
+      mi.numPageAllocated = mem_layer->getAllocated() / mi.pageSize;
+      const auto& slab_segments = mem_layer->getSlabSegments();
+      for (size_t slab_num = 0; slab_num < slab_segments.size(); ++slab_num) {
+        for (auto segment : slab_segments[slab_num]) {
+          MemoryData md;
+          md.slabNum = slab_num;
+          md.startPage = segment.start_page;
+          md.numPages = segment.num_pages;
+          md.memStatus = segment.mem_status;
+          mi.nodeMemoryData.push_back(md);
+        }
       }
-    }
-#endif
-    mem_info.push_back(mi);
+
+      mem_info.push_back(mi);
+    } // for
   } else if (hasGpus_) {
     int numGpus = cudaMgr_->getDeviceCount();
     for (int gpuNum = 0; gpuNum < numGpus; ++gpuNum) {

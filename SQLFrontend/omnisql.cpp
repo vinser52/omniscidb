@@ -760,11 +760,11 @@ void print_memory_summary(ClientContext& context, std::string memory_level) {
       ++gpu_num;
     }
     if (multiNode) {
-      tss << std::setfill(' ') << std::setw(12) << nodeIt.host_name;
+      tss << std::setfill(' ') << std::setw(9) << nodeIt.host_name;
       if (hasGPU) {
-        tss << std::setfill(' ') << std::setw(3);
         tss << "[" << gpu_num << "]";
       } else {
+        tss << "[" << nodeIt.mem_layer << "]";
       }
     } else {
       if (hasGPU) {
@@ -816,6 +816,9 @@ void print_memory_info(ClientContext& context, std::string memory_level) {
       cur_host = nodeIt.host_name;
       if (multiNode) {
         tss << "Node: " << nodeIt.host_name << std::endl;
+        if(sub_system == "CPU"){
+          tss << "Memory_layer: " << nodeIt.mem_layer << std::endl;
+        }
       }
       tss << "Maximum Bytes for one page: " << nodeIt.page_size << " Bytes" << std::endl;
       tss << "Maximum Bytes for node: " << (nodeIt.max_num_pages * nodeIt.page_size) / MB

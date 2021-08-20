@@ -58,6 +58,7 @@ struct MemoryData {
 };
 
 struct MemoryInfo {
+  std::string mem_layer;
   size_t pageSize;
   size_t maxNumPages;
   size_t numPageAllocated;

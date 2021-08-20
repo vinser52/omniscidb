@@ -37,17 +37,6 @@ HeteroBufferMgr::~HeteroBufferMgr() {
   // clear() should be called from the derived class destructor
 }
 
-#ifdef HAVE_DCPMM
-static MemRequirements get_mem_characteristics(BufferProperty bufProp) {
-  switch (bufProp) {
-    case HIGH_BDWTH:
-      return MemRequirements::HIGH_BDWTH;
-    case LOW_LATENCY:
-      return MemRequirements::LOW_LATENCY;
-  }
-  return MemRequirements::CAPACITY;
-}
-#endif /* HAVE_DCPMM */
 /// Throws a runtime_error if the Chunk already exists
 AbstractBuffer* HeteroBufferMgr::createBuffer(
 #ifdef HAVE_DCPMM

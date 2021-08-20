@@ -57,6 +57,7 @@ set(datamgr_source_files
     BufferMgr/BufferMgr.cpp
     BufferMgr/Buffer.cpp
     BufferMgr/HeteroBufferMgr.cpp
+    BufferMgr/omnisci_memory_resources.cpp
     PersistentStorageMgr/MutableCachePersistentStorageMgr.cpp
     PersistentStorageMgr/PersistentStorageMgr.cpp
     ForeignStorage/ForeignTableRefresh.cpp

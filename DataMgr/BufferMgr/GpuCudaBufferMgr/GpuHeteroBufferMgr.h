@@ -29,8 +29,10 @@ class GpuHeteroBufferMgr : public HeteroBufferMgr {
   using base_type = HeteroBufferMgr;
 public:
   GpuHeteroBufferMgr(const int device_id,
-                     const size_t max_buffer_size,
+                     const size_t max_buffer_pool_size,
                      CudaMgr_Namespace::CudaMgr* cuda_mgr,
+                     const size_t min_slab_size, 
+                     const size_t max_slab_size,
                      const size_t page_size = 512,
                      AbstractBufferMgr* parent_mgr = nullptr);
 
@@ -40,8 +42,9 @@ public:
   inline std::string getStringMgrType() override { return ToString(GPU_MGR); }
 
   void clearSlabs() override;
-
+  size_t getMaxSize();
 protected:
+  void releaseSlabs(){}
   AbstractBuffer* constructBuffer(
 #ifdef HAVE_DCPMM
                                   BufferProperty bufProp,
@@ -52,5 +55,6 @@ protected:
 
 private:
   GpuCudaBufferFactory bufferFactory_;
+  size_t max_buffer_pool_size_;
 };
 } // namespace Buffer_Namespace

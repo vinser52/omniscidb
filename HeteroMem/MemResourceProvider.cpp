@@ -11,6 +11,14 @@
 #include <memory>
 
 #include "memkind.h"
+#include <filesystem>
+#include <cstdint>
+#include <unistd.h>
+
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#endif
 
 namespace Buffer_Namespace {
 using pmem_memory_resource_type = libmemkind::pmem::memory_resource;
@@ -25,14 +33,40 @@ MemoryResourceProvider::MemoryResourceProvider() :
     mem_resources_[CAPACITY] = pmem_mem_resource_.get();
     CHECK(mem_resources_[CAPACITY]);
     LOG(INFO) << "KMEM DAX nodes are detected - will use it as a capacity pool";
+    pmem_memory_size = SIZE_MAX;
   }
+  initAvailableDRAMSize();
 }
 
-MemoryResourceProvider::MemoryResourceProvider(const std::string& pmmPath) : 
+MemoryResourceProvider::MemoryResourceProvider(const std::string& pmem_path, size_t size) : 
     dram_mem_resource_(new static_kind_memory_resource_type(libmemkind::kinds::REGULAR)),
     mem_resources_(3, dram_mem_resource_.get())
 {
-    initPmm(pmmPath);
+    initAvailableDRAMSize();
+    initPmm(pmem_path, size);
+}
+
+size_t MemoryResourceProvider::getAvailableMemorySize(std::pmr::memory_resource* mem_resource){
+  if(dram_mem_resource_.get() == mem_resource){
+    return dram_memory_size;
+  } 
+
+  if(pmem_mem_resource_.get() == mem_resource){
+    return pmem_memory_size;
+  } 
+  
+  throw std::runtime_error("Memory type unidentified");
+}
+
+MemType MemoryResourceProvider::getMemoryType(std::pmr::memory_resource* memory_resource){
+ if(dram_mem_resource_.get() == memory_resource){
+    return DRAM;
+  } 
+  if(pmem_mem_resource_.get() == memory_resource){
+     return PMEM;
+   } 
+  
+  throw std::runtime_error("Memory type unidentified");
 }
 
 std::pmr::memory_resource* MemoryResourceProvider::get(const MemRequirements& req) const
@@ -42,46 +76,57 @@ std::pmr::memory_resource* MemoryResourceProvider::get(const MemRequirements& re
   return mem_resources_[req];
 }
 
-void MemoryResourceProvider::initPmm(const std::string& pmmPath)
+void MemoryResourceProvider::initPmm(const std::string& pmem_path, size_t size)
 {
-  std::ifstream pmem_dirs_file(pmmPath);
-  if (pmem_dirs_file.is_open()) {
-    std::string line;
-    while (!pmem_dirs_file.eof()) {
-      std::getline(pmem_dirs_file, line);
-      if (!line.empty()) {
-        std::stringstream ss;
-        std::string path;
-        size_t size;
-
-        ss << line;
-        ss >> path;
-        ss >> size;
-
-        // TODO: need to support multiple directories.
-        if(pmem_mem_resource_.get()) {
-          LOG(FATAL) << "For now OmniSciDB does not support more than one directory for PMM volatile";
-          return;
-        }
-        
-        if (isDAXPath(path)) {
-          LOG(INFO) << path << " is on DAX-enabled file system.";
-        } else {
-          LOG(WARNING) << path << " is not on DAX-enabled file system.";
-        }
-
-        pmem_mem_resource_ = std::make_unique<pmem_memory_resource_type>(path, size * 1024 * 1024 * 1024);
-        mem_resources_[CAPACITY] = pmem_mem_resource_.get();
-        CHECK(mem_resources_[CAPACITY]);
-      }
-    }
-    pmem_dirs_file.close();
+  if (isDAXPath(pmem_path)) {
+    LOG(INFO) << pmem_path << " is on DAX-enabled file system.";
+  } else {
+    LOG(WARNING) << pmem_path << " is not on DAX-enabled file system.";
   }
-  else{
-    LOG(FATAL) << "Unable to open file " << pmmPath;
+
+  if(size == 0){
+    initAvailablePMEMSize(pmem_path);
+  } else {
+    pmem_memory_size = size;
+  }
+
+  pmem_mem_resource_ = std::make_unique<pmem_memory_resource_type>(pmem_path, pmem_memory_size);
+  mem_resources_[CAPACITY] = pmem_mem_resource_.get();
+  CHECK(mem_resources_[CAPACITY]);
+}
+
+void MemoryResourceProvider::initAvailablePMEMSize(std::string path){
+  std::error_code ec;
+  const std::filesystem::space_info si = std::filesystem::space(path, ec);
+  if(!ec){
+    pmem_memory_size = static_cast<size_t>(si.capacity);
+  } else {
+    LOG(FATAL) << "Invalid pmem path: impossible to determine size of the pmem memory";
     return;
   }
+}
 
+void MemoryResourceProvider::initAvailableDRAMSize() {
+#ifdef __APPLE__
+  int mib[2];
+  size_t physical_memory;
+  size_t length;
+  // Get the Physical memory size
+  mib[0] = CTL_HW;
+  mib[1] = HW_MEMSIZE;
+  length = sizeof(size_t);
+  sysctl(mib, 2, &physical_memory, &length, NULL, 0);
+  dram_memory_size = physical_memory;
+#elif defined(_MSC_VER)
+  MEMORYSTATUSEX status;
+  status.dwLength = sizeof(status);
+  GlobalMemoryStatusEx(&status);
+  dram_memory_size = status.ullTotalPhys;
+#else  // Linux
+  long pages = sysconf(_SC_PHYS_PAGES);
+  long page_size = sysconf(_SC_PAGE_SIZE);
+  dram_memory_size = pages * page_size;
+#endif
 }
 
 bool MemoryResourceProvider::isDAXPath(const std::string& path) {

@@ -35,8 +35,9 @@ namespace Buffer_Namespace {
 class HeteroBufferMgr : public AbstractBufferMgr {
 public:
   HeteroBufferMgr(const int device_id,
-                  const size_t max_buffer_size,
                   CudaMgr_Namespace::CudaMgr* cuda_mgr,
+                  const size_t min_slab_size, 
+                  const size_t max_slab_size,
                   const size_t page_size = 512,
                   AbstractBufferMgr* parent_mgr = nullptr);
 
@@ -90,7 +91,6 @@ public:
 
   std::string printSlabs() override { return "Not Implemented"; }
   virtual void clearSlabs();
-  size_t getMaxSize() override;
   size_t getInUseSize() override;
   size_t getAllocated() override;
   bool isAllocationCapped() override;
@@ -125,7 +125,7 @@ protected:
 
   void clearSlabsUnlocked();
 
-  void removeUnpinnedBuffers(chunk_index_iterator first, chunk_index_iterator last);
+  bool removeUnpinnedBuffers(chunk_index_iterator first, chunk_index_iterator last);
 
   CudaMgr_Namespace::CudaMgr* cuda_mgr_;
   
@@ -135,8 +135,6 @@ private:
   void checkpoint(chunk_index_iterator first, chunk_index_iterator last);
   
   AbstractBufferMgr* parent_mgr_;
-  const size_t page_size_;
-  size_t max_num_pages_;
 
   global_mutex_type global_mutex_;
   chunk_index_mutex_type chunk_index_mutex_;
@@ -145,5 +143,11 @@ private:
 
   std::atomic<int> max_buffer_id_;
   size_t buffer_epoch_;
+
+protected:
+  virtual void releaseSlabs() = 0;
+  size_t min_slab_size_;
+  size_t max_slab_size_;
+  const size_t page_size_;
 };
 } // namespace Buffer_Namespace

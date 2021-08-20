@@ -19,11 +19,14 @@
 
 namespace Buffer_Namespace {
 GpuHeteroBufferMgr::GpuHeteroBufferMgr(const int device_id,
-                                       const size_t max_buffer_size,
+                                       const size_t max_buffer_pool_size,
                                        CudaMgr_Namespace::CudaMgr* cuda_mgr,
+                                       const size_t min_slab_size, 
+                                       const size_t max_slab_size,
                                        const size_t page_size,
                                        AbstractBufferMgr* parent_mgr)
-    : HeteroBufferMgr(device_id, max_buffer_size, cuda_mgr, page_size, parent_mgr) {
+    : HeteroBufferMgr(device_id, cuda_mgr,  min_slab_size,
+                  max_slab_size, page_size, parent_mgr), max_buffer_pool_size_(max_buffer_pool_size) {
 }
 
 GpuHeteroBufferMgr::~GpuHeteroBufferMgr() {
@@ -33,6 +36,10 @@ GpuHeteroBufferMgr::~GpuHeteroBufferMgr() {
 void GpuHeteroBufferMgr::clearSlabs() {
   base_type::clearSlabs();
   bufferFactory_.releaseMemory();
+}
+
+size_t GpuHeteroBufferMgr::getMaxSize(){
+  return max_buffer_pool_size_;
 }
 
 AbstractBuffer* GpuHeteroBufferMgr::constructBuffer(

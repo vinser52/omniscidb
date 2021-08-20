@@ -26,11 +26,14 @@ using namespace Data_Namespace;
 namespace Buffer_Namespace {
 
 HeteroBufferMgr::HeteroBufferMgr(const int device_id,
-                                 const size_t max_buffer_size,
                                  CudaMgr_Namespace::CudaMgr* cuda_mgr,
+                                 const size_t min_slab_size, 
+                                 const size_t max_slab_size,
                                  const size_t page_size,
                                  AbstractBufferMgr* parent_mgr)
-    : AbstractBufferMgr(device_id), cuda_mgr_(cuda_mgr), parent_mgr_(parent_mgr), page_size_(page_size), max_num_pages_(max_buffer_size / page_size_), max_buffer_id_(0), buffer_epoch_(0) {
+    : AbstractBufferMgr(device_id), cuda_mgr_(cuda_mgr),  parent_mgr_(parent_mgr), max_buffer_id_(0), buffer_epoch_(0),  
+      min_slab_size_(min_slab_size), max_slab_size_(max_slab_size), page_size_(page_size)
+     {
 }
 
 HeteroBufferMgr::~HeteroBufferMgr() {
@@ -247,10 +250,14 @@ void HeteroBufferMgr::clearSlabs() {
 }
 
 void HeteroBufferMgr::clearSlabsUnlocked() {
-  removeUnpinnedBuffers(chunk_index_.begin(), chunk_index_.end());
+  bool pinned_exists = removeUnpinnedBuffers(chunk_index_.begin(), chunk_index_.end());
+  if (!pinned_exists) {
+    releaseSlabs();
+  }
 }
 
-void HeteroBufferMgr::removeUnpinnedBuffers(chunk_index_iterator first, chunk_index_iterator last) {
+bool HeteroBufferMgr::removeUnpinnedBuffers(chunk_index_iterator first, chunk_index_iterator last) {
+  bool pinned_exists = false;
   auto chunk_it = first;
   while(chunk_it != last) {
     auto buffer = chunk_it->second;
@@ -260,14 +267,14 @@ void HeteroBufferMgr::removeUnpinnedBuffers(chunk_index_iterator first, chunk_in
       auto ret = reverse_index_.erase(buffer);
       CHECK(ret == size_t(1));
       continue;
+    } else {
+      pinned_exists = true;
     }
     ++chunk_it;
   }
+  return pinned_exists;
 }
 
-size_t HeteroBufferMgr::getMaxSize() {
-  return page_size_ * max_num_pages_;
-}
 
 size_t HeteroBufferMgr::getInUseSize() {
   size_t in_use = 0;

@@ -451,6 +451,36 @@ void DataMgr::resetPersistentStorage(const File_Namespace::DiskCacheConfig& cach
   createTopLevelMetadata();
 }
 
+void DataMgr::parsePmemConfig(std::string& pathToPmmMemory, size_t& sizePoolOfPmm){
+  std::ifstream pmem_dirs_file(pmm_path_);
+  if (pmem_dirs_file.is_open()) {
+    std::string line;
+    while (!pmem_dirs_file.eof()) {
+      std::getline(pmem_dirs_file, line);
+      if (!line.empty()) {
+        std::stringstream ss;
+
+        ss << line;
+        
+        if(!pathToPmmMemory.empty()){
+          LOG(FATAL) << "For now OmniSciDB does not support more than one directory for PMM volatile";
+          return;
+        } else {
+          ss >> pathToPmmMemory;
+          ss >> sizePoolOfPmm;
+          sizePoolOfPmm *= 1024 * 1024 * 1024;
+        }
+      }
+    }
+    pmem_dirs_file.close();
+
+  }
+  else{
+    LOG(FATAL) << "Unable to open file " << pmm_path_;
+    return;
+  }
+}
+
 void DataMgr::populateMgrs(const SystemParameters& system_parameters,
                            const size_t userSpecifiedNumReaderThreads,
                            const File_Namespace::DiskCacheConfig& cache_config) {
@@ -465,28 +495,16 @@ void DataMgr::populateMgrs(const SystemParameters& system_parameters,
 
   levelSizes_.push_back(1);
   size_t page_size{512};
-  size_t cpuBufferSize = system_parameters.cpu_buffer_mem_bytes;
-  if (cpuBufferSize == 0) {  // if size is not specified
-    const auto total_system_memory = getTotalSystemMemory();
-    VLOG(1) << "Detected " << (float)total_system_memory / (1024 * 1024)
-            << "M of total system memory.";
-    cpuBufferSize = total_system_memory *
-                    0.8;  // should get free memory instead of this ugly heuristic
-  }
-  size_t minCpuSlabSize = std::min(system_parameters.min_cpu_slab_size, cpuBufferSize);
-  minCpuSlabSize = (minCpuSlabSize / page_size) * page_size;
-  size_t maxCpuSlabSize = std::min(system_parameters.max_cpu_slab_size, cpuBufferSize);
-  maxCpuSlabSize = (maxCpuSlabSize / page_size) * page_size;
-  LOG(INFO) << "Min CPU Slab Size is " << (float)minCpuSlabSize / (1024 * 1024) << "MB";
-  LOG(INFO) << "Max CPU Slab Size is " << (float)maxCpuSlabSize / (1024 * 1024) << "MB";
-  LOG(INFO) << "Max memory pool size for CPU is " << (float)cpuBufferSize / (1024 * 1024)
-            << "MB";
-  // TODO: Should we use minCpuSlabSize and maxCpuSlabSize in CpuHeteroBufferMgr???
+  
+
   AbstractBufferMgr *cpuMgr = nullptr;
   if (hasPmm_) {
-    cpuMgr = new Buffer_Namespace::CpuHeteroBufferMgr(0, cpuBufferSize, pmm_path_, cudaMgr_.get(), page_size, bufferMgrs_[0][0]);
+    std::string pathToPmmMemory;
+    size_t sizePoolOfPmm;
+    parsePmemConfig(pathToPmmMemory, sizePoolOfPmm);
+    cpuMgr = new Buffer_Namespace::CpuHeteroBufferMgr(0, system_parameters.cpu_buffer_mem_bytes, cudaMgr_.get(), system_parameters.min_cpu_slab_size, system_parameters.max_cpu_slab_size, pathToPmmMemory, sizePoolOfPmm, page_size, bufferMgrs_[0][0]);
   } else {
-    cpuMgr = new Buffer_Namespace::CpuHeteroBufferMgr(0, cpuBufferSize, cudaMgr_.get(), page_size, bufferMgrs_[0][0]);
+    cpuMgr = new Buffer_Namespace::CpuHeteroBufferMgr(0, system_parameters.cpu_buffer_mem_bytes, cudaMgr_.get(), system_parameters.min_cpu_slab_size, system_parameters.max_cpu_slab_size, page_size, bufferMgrs_[0][0]);
   }
   bufferMgrs_[1].push_back(cpuMgr);
   levelSizes_.push_back(1);
@@ -517,6 +535,8 @@ void DataMgr::populateMgrs(const SystemParameters& system_parameters,
       bufferMgrs_[2].push_back(new Buffer_Namespace::GpuHeteroBufferMgr(gpuNum,
                                                                         gpuMaxMemSize,
                                                                         cudaMgr_.get(),
+                                                                        minGpuSlabSize,
+                                                                        maxGpuSlabSize,
                                                                         page_size,
                                                                         bufferMgrs_[1][0]));
     }

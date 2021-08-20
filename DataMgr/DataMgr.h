@@ -302,6 +302,7 @@ class DataMgr {
   void convertDB(const std::string basePath);
   void checkpoint();  // checkpoint for whole DB, called from convertDB proc only
   void createTopLevelMetadata() const;
+  void parsePmemConfig(std::string& pathToPmmMemory, size_t& sizePoolOfPmm);
 
   std::vector<std::vector<AbstractBufferMgr*>> bufferMgrs_;
   std::unique_ptr<CudaMgr_Namespace::CudaMgr> cudaMgr_;
